@@ -5,6 +5,8 @@
 #ifndef ALLOCATOR_FUNCTIONS_H
 #define ALLOCATOR_FUNCTIONS_H
 
-doublyLinkedList_t **createArrayOfListsWithIncreasingSize(int address, int number, int memory_size);
-void printMemoryDump(doublyLinkedList_t **arrayOfLists, int number, int memory_size);
+arrayOfLists_t *createArrayOfListsWithIncreasingSize(long address, int number, int memorySize);
+void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory);
+node_t *searchForBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded);
+
 #endif

@@ -11,9 +11,9 @@
 
 int main() {
 
-	doublyLinkedList_t **arrayOfLists = NULL;
+	arrayOfLists_t *arrayOfListsFreeMemory = NULL, *arrayOfListsAllocatedMemory = NULL;
 
-	int number = 0, memory_size = 0;
+	int nrOfListsWithFreeMemory = 0, memorySize = 0;
 
 	while (1) {
 		char choice[MAX_INPUT_SIZE];
@@ -22,15 +22,29 @@ int main() {
 		if (strcmp(choice, "INIT_HEAP") == 0) {
 			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
 
-			scanf("%s %d %d", address, &number, &memory_size);
+			scanf("%s %d %d", address, &nrOfListsWithFreeMemory, &memorySize);
 
-			int addressInt = base16to10(removeHexaPrefix(address));
+			int addressLong = base16to10(removeHexaPrefix(address));
 
 			free(address);
 
-			arrayOfLists = createArrayOfListsWithIncreasingSize(addressInt, number, memory_size);
+			arrayOfListsFreeMemory = createArrayOfListsWithIncreasingSize(
+					 		 addressLong, nrOfListsWithFreeMemory, memorySize);
+
 		} else if (strcmp(choice, "DUMP_MEMORY") == 0) {
-			printMemoryDump(arrayOfLists, number, memory_size);
+			if (arrayOfListsAllocatedMemory == NULL) {
+				arrayOfListsAllocatedMemory = (arrayOfLists_t *) malloc(sizeof(arrayOfLists_t ));
+
+				arrayOfListsAllocatedMemory->number = 0;
+
+				arrayOfListsAllocatedMemory->memorySize = 0;
+
+
+
+				printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory);
+			} else {
+				printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory);
+			}
 		} else if (strcmp(choice, "exit") == 0) {
 			break;
 		} else {

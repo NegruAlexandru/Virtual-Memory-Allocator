@@ -15,10 +15,10 @@
                 }							\
         } while (0)
 
-void printListInt(doublyLinkedList_t *list) {
+void printListLong(doublyLinkedList_t *list) {
 	node_t *current = list->head;
 	while (current != NULL) {
-		printf("%d ", *(int *)current->data);
+		printf("%ld ", *(long *)current->data);
 		current = current->next;
 	}
 	printf("\n");
@@ -33,24 +33,26 @@ void printListChar(doublyLinkedList_t *list) {
 	printf("\n");
 }
 
-doublyLinkedList_t *createDoublyLinkedList(int data_size) {
+doublyLinkedList_t *createDoublyLinkedList(int dataSize) {
 	doublyLinkedList_t *list = (doublyLinkedList_t *) malloc(sizeof(doublyLinkedList_t));
 
 	list->size = 0;
-	list->data_size = data_size;
+	list->dataSize = dataSize;
 	list->head = NULL;
 
 	return list;
 }
 
-void addToNthPosition(doublyLinkedList_t *list, int position, void *data) {
+void addToNthPosition(doublyLinkedList_t *list, int position, void *data, long address) {
 	node_t *newNode = (node_t *) malloc(sizeof(node_t));
 	DIE(newNode == NULL, "malloc");
 
-	newNode->data = malloc(list->data_size);
+	newNode->data = malloc(list->dataSize);
 	DIE(newNode->data == NULL, "malloc");
 
-	memcpy(newNode->data, data, list->data_size);
+	memcpy(newNode->data, data, list->dataSize);
+
+	newNode->address = address;
 
 	newNode->next = NULL;
 	newNode->prev = NULL;
@@ -90,6 +92,9 @@ node_t *removeNthPosition(doublyLinkedList_t *list, int position) {
 	if (position == 0) {
 		list->head = list->head->next;
 		list->head->prev = NULL;
+
+		list->size--;
+
 		return current;
 	} else {
 		for (int i = 0; i < position - 1; i++) {
@@ -102,13 +107,37 @@ node_t *removeNthPosition(doublyLinkedList_t *list, int position) {
 		if (toRemove->next != NULL) {
 			toRemove->next->prev = current;
 		}
+
+		list->size--;
+
 		return toRemove;
 	}
-
-	list->size--;
 }
 
-void addNewEmptyNode(doublyLinkedList_t *list, int position, int address) {
+node_t *removeNodeByAddress(doublyLinkedList_t *list, long address) {
+	node_t *current = list->head;
+
+	while (current != NULL) {
+		if (current->address == address) {
+			if (current == list->head) {
+				list->head = list->head->next;
+				list->head->prev = NULL;
+			} else {
+				current->prev->next = current->next;
+				if (current->next != NULL) {
+					current->next->prev = current->prev;
+				}
+			}
+			list->size--;
+			return current;
+		}
+		current = current->next;
+	}
+
+	return NULL;
+}
+
+void addNewEmptyNode(doublyLinkedList_t *list, int position, long address) {
 	node_t *newNode = (node_t *) malloc(sizeof(node_t));
 	DIE(newNode == NULL, "malloc");
 
