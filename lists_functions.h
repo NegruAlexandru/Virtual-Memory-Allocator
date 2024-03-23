@@ -9,5 +9,8 @@ void addToNthPosition(doublyLinkedList_t *list, int position, void *data, long a
 node_t *removeNthPosition(doublyLinkedList_t *list, int position);
 node_t *removeNodeByAddress(doublyLinkedList_t *list, long address);
 void addNewEmptyNode(doublyLinkedList_t *list, int position, long address);
+node_t *createEmptyNode(int data_size, long address);
+void bubbleSortListByAddress(doublyLinkedList_t *list);
+void bubbleSortArrayOfListsBySize(doublyLinkedList_t **array, int size);
 
 #endif

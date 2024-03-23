@@ -170,3 +170,71 @@ void addNewEmptyNode(doublyLinkedList_t *list, int position, long address) {
 
 	list->size++;
 }
+
+node_t *createEmptyNode(int data_size, long address) {
+	node_t *newNode = (node_t *) malloc(sizeof(node_t));
+	DIE(newNode == NULL, "malloc");
+
+	newNode->data = malloc(data_size);
+	DIE(newNode->data == NULL, "malloc");
+
+	newNode->address = address;
+
+	newNode->next = NULL;
+	newNode->prev = NULL;
+
+	return newNode;
+}
+
+void bubbleSortListByAddress(doublyLinkedList_t *list) {
+	if (list == NULL || list->head == NULL) {
+		return;
+	}
+
+	int swapped;
+	node_t *current;
+	node_t *last = NULL;
+
+	do {
+		swapped = 0;
+		current = list->head;
+
+		while (current->next != last) {
+			if (current->address > current->next->address) {
+				// Swap nodes
+				long tempAddress = current->address;
+				void *tempData = current->data;
+
+				current->address = current->next->address;
+				current->data = current->next->data;
+
+				current->next->address = tempAddress;
+				current->next->data = tempData;
+
+				swapped = 1;
+			}
+			current = current->next;
+		}
+		last = current;
+	}
+	while (swapped);
+}
+
+void bubbleSortArrayOfListsBySize(doublyLinkedList_t **array, int size) {
+	int swapped;
+	doublyLinkedList_t *temp;
+
+	do {
+		swapped = 0;
+
+		for (int i = 0; i < size - 1; i++) {
+			if (array[i]->dataSize > array[i + 1]->dataSize) {
+				temp = array[i];
+				array[i] = array[i + 1];
+				array[i + 1] = temp;
+				swapped = 1;
+			}
+		}
+	}
+	while (swapped);
+}

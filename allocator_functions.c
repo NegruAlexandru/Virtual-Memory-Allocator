@@ -1,6 +1,7 @@
 #include "allocator_functions.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "lists_structs.h"
 #include "lists_functions.h"
 #include "datatype_functions.h"
@@ -23,7 +24,6 @@ arrayOfLists_t *createArrayOfListsWithIncreasingSize(long address, int number, i
 			int n = 0;
 
 			addToNthPosition(arr->lists[i], j, &n, address + j * dataSize + i * memorySize);
-			printf("0x%s\n", base10to16(address + j * dataSize + i * memorySize));
 		}
 
 		dataSize *= 2;
@@ -32,17 +32,25 @@ arrayOfLists_t *createArrayOfListsWithIncreasingSize(long address, int number, i
 	return arr;
 }
 
-void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory) {
-	int numberListsFree = arrayOfListsFreeMemory->number;
-	int memorySizeFree = arrayOfListsFreeMemory->memorySize;
+void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory, int nrOfMallocs, int nrOfFrees, int nrOfFragmentations) {
+	int totalAllocatedMemory = 0;
+	int totalFreeMemory = 0;
 
-	int numberListsAllocated = arrayOfListsAllocatedMemory->number;
-	int memorySizeAllocated = arrayOfListsAllocatedMemory->memorySize;
+	bubbleSortArrayOfListsBySize(arrayOfListsFreeMemory->lists, arrayOfListsFreeMemory->number);
+	bubbleSortArrayOfListsBySize(arrayOfListsAllocatedMemory->lists, arrayOfListsAllocatedMemory->number);
+
+	for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
+		totalFreeMemory += arrayOfListsFreeMemory->lists[i]->size * arrayOfListsFreeMemory->lists[i]->dataSize;
+	}
+
+	for (int i = 0; i < arrayOfListsAllocatedMemory->number; i++) {
+		totalAllocatedMemory += arrayOfListsAllocatedMemory->lists[i]->size * arrayOfListsAllocatedMemory->lists[i]->dataSize;
+	}
 
 	printf("+++++DUMP+++++\n");
-	printf("Total memory: %d\n", numberListsFree * memorySizeFree);
-	printf("Total allocated memory: %d\n", numberListsAllocated * memorySizeAllocated);
-	printf("Total free memory: %d\n", numberListsFree * memorySizeFree - numberListsAllocated * memorySizeAllocated);
+	printf("Total memory: %d bytes\n", totalFreeMemory + totalAllocatedMemory);
+	printf("Total allocated memory: %d bytes\n", totalAllocatedMemory);
+	printf("Total free memory: %d bytes\n", totalFreeMemory);
 
 	int freeBlocks = 0;
 	for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
@@ -56,9 +64,9 @@ void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arr
 	}
 	printf("Number of allocated blocks: %d\n", allocatedBlocks);
 
-	printf("Number of malloc calls: %d\n", 0);
-	printf("Number of fragmentations: %d\n", 0);
-	printf("Number of free calls: %d\n", 0);
+	printf("Number of malloc calls: %d\n", nrOfMallocs);
+	printf("Number of fragmentations: %d\n", nrOfFragmentations);
+	printf("Number of free calls: %d\n", nrOfFrees);
 
 	for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
 		int dataSize = arrayOfListsFreeMemory->lists[i]->dataSize;
@@ -74,31 +82,158 @@ void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arr
 		}
 		printf("\n");
 	}
-	printf("Allocated blocks: %d\n", 0);
 
+	printf("Allocated blocks : ");
+
+	for (int i = 0; i < arrayOfListsAllocatedMemory->number; i++) {
+		node_t *current = arrayOfListsAllocatedMemory->lists[i]->head;
+
+		while (current != NULL) {
+			printf("(0x%lx - %d) ", current->address, arrayOfListsAllocatedMemory->lists[i]->dataSize);
+			current = current->next;
+		}
+	}
+
+	printf("\n");
+
+	printf("-----DUMP----\n");
 }
 
-node_t *searchForBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded) {
+node_t *getIdealBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded, int *sizeOfBlock) {
+	int position = -1;
+	int minAddress;
+
 	for (int i = 0; i < amountOfLists; i++) {
 		if (arrayOfLists->lists[i]->dataSize == sizeNeeded) {
-			node_t *current = arrayOfLists->lists[i]->head;
-			while (current != NULL) {
-				if (*(int *)current->data == 0) {
-					return current;
+			if (position == -1) {
+				position = i;
+				minAddress = arrayOfLists->lists[i]->head->address;
+			} else {
+				if (arrayOfLists->lists[i]->head->address < minAddress) {
+					position = i;
+					minAddress = arrayOfLists->lists[i]->head->address;
 				}
-				current = current->next;
 			}
-		} else if (arrayOfLists->lists[i]->dataSize > sizeNeeded) {
-			node_t *current = arrayOfLists->lists[i]->head;
-			while (current != NULL) {
-				if (*(int *)current->data == 0) {
-					return current;
-				}
-				current = current->next;
-			}
-			// TODO: split the block
 		}
-		i++;
 	}
-	return NULL;
+
+	if (position == -1) {
+		return NULL;
+	}
+
+	*sizeOfBlock = arrayOfLists->lists[position]->dataSize;
+	node_t *block = removeNthPosition(arrayOfLists->lists[position], 0);
+	return block;
+}
+
+node_t *getAvailableBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded, int *sizeOfBlock) {
+	int position = -1;
+	int minAddress;
+
+	for (int i = 0; i < amountOfLists; i++) {
+		if (arrayOfLists->lists[i]->dataSize >= sizeNeeded) {
+			if (position == -1) {
+				position = i;
+				minAddress = arrayOfLists->lists[i]->head->address;
+			} else {
+				if (arrayOfLists->lists[i]->head->address < minAddress) {
+					position = i;
+					minAddress = arrayOfLists->lists[i]->head->address;
+				}
+			}
+		}
+	}
+
+	if (position == -1) {
+		return NULL;
+	}
+
+	*sizeOfBlock = arrayOfLists->lists[position]->dataSize;
+	node_t *block = removeNthPosition(arrayOfLists->lists[position], 0);
+	return block;
+}
+
+void moveBlockToArrayList(arrayOfLists_t *arrayOfLists, node_t *block, int size) {
+	int n = 0;
+
+	for (int i = 0; i < arrayOfLists->number; i++) {
+		if (arrayOfLists->lists[i]->dataSize == size) {
+			addToNthPosition(arrayOfLists->lists[i], arrayOfLists->lists[i]->size, &n, block->address);
+			return;
+		}
+	}
+
+	doublyLinkedList_t **tmp = (doublyLinkedList_t **)realloc(arrayOfLists->lists, (arrayOfLists->number + 1) * sizeof(doublyLinkedList_t *));
+
+	if (!tmp) {
+		printf("Realloc fail\n");
+		return;
+	}
+
+	arrayOfLists->lists = tmp;
+
+	arrayOfLists->lists[arrayOfLists->number] = createDoublyLinkedList(size);
+
+	arrayOfLists->number++;
+
+	addToNthPosition(arrayOfLists->lists[arrayOfLists->number - 1], 0, &n, block->address);
+
+	free(block->data);
+	free(block);
+}
+
+int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory) {
+	//requested size
+	int sizeNeeded;
+	scanf("%d", &sizeNeeded);
+
+	//modified by getBlock functions
+	int sizeOfBlock = 0;
+
+	//searching for free block
+	node_t *block = getIdealBlock(arrayOfListsFreeMemory, arrayOfListsFreeMemory->number, sizeNeeded, &sizeOfBlock);
+
+	if (!block) {
+		block = getAvailableBlock(arrayOfListsFreeMemory, arrayOfListsFreeMemory->number, sizeNeeded, &sizeOfBlock);
+
+		if (!block) {
+			printf("Out of memory\n");
+			return -1;
+		}
+	}
+
+	//if block is exactly the size needed
+	if (sizeOfBlock == sizeNeeded) {
+		moveBlockToArrayList(arrayOfListsAllocatedMemory, block, sizeOfBlock);
+
+		bubbleSortListByAddress(arrayOfListsAllocatedMemory->lists[arrayOfListsAllocatedMemory->number - 1]);
+
+		return 0;
+	}
+
+	//if block is bigger than the size needed
+	if (sizeOfBlock > sizeNeeded) {
+		//requested block being moved to allocated memory
+		node_t *requestedBlock = createEmptyNode(sizeNeeded, block->address);
+
+		moveBlockToArrayList(arrayOfListsAllocatedMemory, requestedBlock, sizeNeeded);
+
+		bubbleSortListByAddress(arrayOfListsAllocatedMemory->lists[arrayOfListsAllocatedMemory->number - 1]);
+
+		//remaining block being moved to free memory
+		node_t *remainingBlock = createEmptyNode(sizeOfBlock - sizeNeeded, block->address + sizeNeeded);
+
+		moveBlockToArrayList(arrayOfListsFreeMemory, remainingBlock, sizeOfBlock - sizeNeeded);
+
+		for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
+			if (arrayOfListsFreeMemory->lists[i]->dataSize == sizeOfBlock - sizeNeeded) {
+				bubbleSortListByAddress(arrayOfListsFreeMemory->lists[i]);
+			}
+		}
+
+		free(block->data);
+		free(block);
+
+		return 1;
+	}
 }
