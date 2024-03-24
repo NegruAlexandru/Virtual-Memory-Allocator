@@ -23,7 +23,7 @@ arrayOfLists_t *createArrayOfListsWithIncreasingSize(long address, int number, i
 		for (int j = 0; j < memorySize / dataSize; j++) {
 			int n = 0;
 
-			addToNthPosition(arr->lists[i], j, &n, address + j * dataSize + i * memorySize);
+			createNodeNthPosition(arr->lists[i], j, &n, address + j * dataSize + i * memorySize);
 		}
 
 		dataSize *= 2;
@@ -69,6 +69,9 @@ void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arr
 	printf("Number of free calls: %d\n", nrOfFrees);
 
 	for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
+		if (arrayOfListsFreeMemory->lists[i]->size == 0) {
+			continue;
+		}
 		int dataSize = arrayOfListsFreeMemory->lists[i]->dataSize;
 		int size = arrayOfListsFreeMemory->lists[i]->size;
 
@@ -99,31 +102,16 @@ void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arr
 	printf("-----DUMP----\n");
 }
 
-node_t *getIdealBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded, int *sizeOfBlock) {
-	int position = -1;
-	int minAddress;
-
-	for (int i = 0; i < amountOfLists; i++) {
+node_t *getIdealBlock(arrayOfLists_t *arrayOfLists, int sizeNeeded, int *sizeOfBlock) {
+	for (int i = 0; i < arrayOfLists->number; i++) {
 		if (arrayOfLists->lists[i]->dataSize == sizeNeeded) {
-			if (position == -1) {
-				position = i;
-				minAddress = arrayOfLists->lists[i]->head->address;
-			} else {
-				if (arrayOfLists->lists[i]->head->address < minAddress) {
-					position = i;
-					minAddress = arrayOfLists->lists[i]->head->address;
-				}
-			}
+			*sizeOfBlock = arrayOfLists->lists[i]->dataSize;
+			bubbleSortListByAddress(arrayOfLists->lists[i]);
+			node_t *block = removeNthPosition(arrayOfLists->lists[i], 0);
+			return block;
 		}
 	}
-
-	if (position == -1) {
-		return NULL;
-	}
-
-	*sizeOfBlock = arrayOfLists->lists[position]->dataSize;
-	node_t *block = removeNthPosition(arrayOfLists->lists[position], 0);
-	return block;
+	return NULL;
 }
 
 node_t *getAvailableBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded, int *sizeOfBlock) {
@@ -132,6 +120,8 @@ node_t *getAvailableBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int s
 
 	for (int i = 0; i < amountOfLists; i++) {
 		if (arrayOfLists->lists[i]->dataSize >= sizeNeeded) {
+			bubbleSortListByAddress(arrayOfLists->lists[i]);
+
 			if (position == -1) {
 				position = i;
 				minAddress = arrayOfLists->lists[i]->head->address;
@@ -149,16 +139,15 @@ node_t *getAvailableBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int s
 	}
 
 	*sizeOfBlock = arrayOfLists->lists[position]->dataSize;
+	bubbleSortListByAddress(arrayOfLists->lists[position]);
 	node_t *block = removeNthPosition(arrayOfLists->lists[position], 0);
 	return block;
 }
 
-void moveBlockToArrayList(arrayOfLists_t *arrayOfLists, node_t *block, int size) {
-	int n = 0;
-
+void moveBlockToArrayOfLists(arrayOfLists_t *arrayOfLists, node_t *block, int size) {
 	for (int i = 0; i < arrayOfLists->number; i++) {
 		if (arrayOfLists->lists[i]->dataSize == size) {
-			addToNthPosition(arrayOfLists->lists[i], arrayOfLists->lists[i]->size, &n, block->address);
+			addNodeToNthPosition(arrayOfLists->lists[i], block, arrayOfLists->lists[i]->size);
 			return;
 		}
 	}
@@ -176,13 +165,10 @@ void moveBlockToArrayList(arrayOfLists_t *arrayOfLists, node_t *block, int size)
 
 	arrayOfLists->number++;
 
-	addToNthPosition(arrayOfLists->lists[arrayOfLists->number - 1], 0, &n, block->address);
-
-	free(block->data);
-	free(block);
+	addNodeToNthPosition(arrayOfLists->lists[arrayOfLists->number - 1], block, 0);
 }
 
-int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory) {
+int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory, int nrOfFragmentations) {
 	//requested size
 	int sizeNeeded;
 	scanf("%d", &sizeNeeded);
@@ -191,7 +177,7 @@ int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *array
 	int sizeOfBlock = 0;
 
 	//searching for free block
-	node_t *block = getIdealBlock(arrayOfListsFreeMemory, arrayOfListsFreeMemory->number, sizeNeeded, &sizeOfBlock);
+	node_t *block = getIdealBlock(arrayOfListsFreeMemory, sizeNeeded, &sizeOfBlock);
 
 	if (!block) {
 		block = getAvailableBlock(arrayOfListsFreeMemory, arrayOfListsFreeMemory->number, sizeNeeded, &sizeOfBlock);
@@ -204,9 +190,11 @@ int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *array
 
 	//if block is exactly the size needed
 	if (sizeOfBlock == sizeNeeded) {
-		moveBlockToArrayList(arrayOfListsAllocatedMemory, block, sizeOfBlock);
+		// block being moved to allocated memory
+		moveBlockToArrayOfLists(arrayOfListsAllocatedMemory, block, sizeOfBlock);
 
-		bubbleSortListByAddress(arrayOfListsAllocatedMemory->lists[arrayOfListsAllocatedMemory->number - 1]);
+		bubbleSortListByAddress(getListWithSize(arrayOfListsAllocatedMemory, sizeOfBlock));
+		bubbleSortArrayOfListsBySize(arrayOfListsAllocatedMemory->lists, arrayOfListsAllocatedMemory->number);
 
 		return 0;
 	}
@@ -214,26 +202,103 @@ int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *array
 	//if block is bigger than the size needed
 	if (sizeOfBlock > sizeNeeded) {
 		//requested block being moved to allocated memory
-		node_t *requestedBlock = createEmptyNode(sizeNeeded, block->address);
+		node_t *requestedBlock;
+		if (block->origin >= 0) {
+			requestedBlock = createEmptyNodeWithOrigin(sizeNeeded, block->address, block->origin);
+		} else {
+			requestedBlock = createEmptyNodeWithOrigin(sizeNeeded, block->address, nrOfFragmentations);
+		}
 
-		moveBlockToArrayList(arrayOfListsAllocatedMemory, requestedBlock, sizeNeeded);
+		moveBlockToArrayOfLists(arrayOfListsAllocatedMemory, requestedBlock, sizeNeeded);
 
-		bubbleSortListByAddress(arrayOfListsAllocatedMemory->lists[arrayOfListsAllocatedMemory->number - 1]);
+		bubbleSortListByAddress(getListWithSize(arrayOfListsAllocatedMemory, sizeNeeded));
 
 		//remaining block being moved to free memory
-		node_t *remainingBlock = createEmptyNode(sizeOfBlock - sizeNeeded, block->address + sizeNeeded);
-
-		moveBlockToArrayList(arrayOfListsFreeMemory, remainingBlock, sizeOfBlock - sizeNeeded);
-
-		for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
-			if (arrayOfListsFreeMemory->lists[i]->dataSize == sizeOfBlock - sizeNeeded) {
-				bubbleSortListByAddress(arrayOfListsFreeMemory->lists[i]);
-			}
+		node_t *remainingBlock;
+		if (block->origin >= 0) {
+			remainingBlock = createEmptyNodeWithOrigin(sizeOfBlock - sizeNeeded, block->address + sizeNeeded, block->origin);
+		} else {
+			remainingBlock = createEmptyNodeWithOrigin(sizeOfBlock - sizeNeeded, block->address + sizeNeeded, nrOfFragmentations);
 		}
+
+		moveBlockToArrayOfLists(arrayOfListsFreeMemory, remainingBlock, sizeOfBlock - sizeNeeded);
+
+		bubbleSortListByAddress(getListWithSize(arrayOfListsFreeMemory, sizeOfBlock - sizeNeeded));
 
 		free(block->data);
 		free(block);
 
 		return 1;
+	}
+
+	return -1;
+}
+
+int freeBlock(arrayOfLists_t *arrayOfListsAllocatedMemory, arrayOfLists_t *arrayOfListsFreeMemory, long address, int freeMode) {
+	int blockSize = 0;
+
+	node_t *block = removeNAddress(arrayOfListsAllocatedMemory, address, &blockSize);
+
+	if (!block) {
+		printf("Invalid free\n");
+		return -1;
+	}
+
+	if (freeMode == 0) {
+		moveBlockToArrayOfLists(arrayOfListsFreeMemory, block, blockSize);
+		bubbleSortListByAddress(getListWithSize(arrayOfListsFreeMemory, blockSize));
+
+		return 0;
+
+	} else if (freeMode == 1) {
+		if (block->origin >= 0) {
+
+			int neighbourSize = 0;
+
+			node_t *neighbour = removeNeighbourNode(block, arrayOfListsFreeMemory, &blockSize, &neighbourSize);
+
+			while (neighbour) {
+				if (neighbour->origin == block->origin) {
+					blockSize += neighbourSize;
+
+					if (block->address < neighbour->address) {
+						void *tmp = (void *)realloc(block->data, blockSize);
+
+						if (!tmp) {
+							printf("Realloc fail\n");
+							return -1;
+						}
+
+						block->data = tmp;
+
+						free(neighbour->data);
+						free(neighbour);
+					} else {
+						void *tmp = (void *)realloc(neighbour->data, blockSize);
+
+						if (!tmp) {
+							printf("Realloc fail\n");
+							return -1;
+						}
+
+						neighbour->data = tmp;
+
+						free(block->data);
+						free(block);
+
+						block = neighbour;
+						neighbour = NULL;
+					}
+				}
+
+				neighbour = removeNeighbourNode(block, arrayOfListsFreeMemory, &blockSize, &neighbourSize);
+			}
+
+			moveBlockToArrayOfLists(arrayOfListsFreeMemory, block, blockSize);
+
+			bubbleSortListByAddress(getListWithSize(arrayOfListsFreeMemory, blockSize));
+
+			return 0;
+		}
 	}
 }

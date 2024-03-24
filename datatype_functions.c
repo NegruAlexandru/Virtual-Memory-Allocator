@@ -43,12 +43,15 @@ long base16to10(char *hex) {
 		number *= 16;
 		if (hex[i] >= '0' && hex[i] <= '9') {
 			number += hex[i] - '0';
-		} else {
+		} else if (hex[i] >= 'A' && hex[i] <= 'F') {
 			number += hex[i] - 'A' + 10;
+		} else if (hex[i] >= 'a' && hex[i] <= 'f') {
+			number += hex[i] - 'a' + 10;
 		}
 		i++;
 	}
 
+	free(hex);
 	return number;
 }
 
@@ -67,7 +70,7 @@ char *addHexaPrefix(char * hex) {
 	return newHex;
 }
 
-char *removeHexaPrefix(char * hex) {
+char *removeHexaPrefix(char *hex) {
 	char *newHex = (char *) malloc(10 * sizeof(char));
 	int i = 2;
 
@@ -77,5 +80,7 @@ char *removeHexaPrefix(char * hex) {
 	}
 
 	newHex[i - 2] = '\0';
+
+	free(hex);
 	return newHex;
 }

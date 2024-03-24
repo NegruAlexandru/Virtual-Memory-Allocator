@@ -7,15 +7,15 @@
 #include <string.h>
 
 #define MAX_INPUT_SIZE 600
-#define MAX_ADDRESS_SIZE 8
+#define MAX_ADDRESS_SIZE 10
 
 int main() {
 
 	arrayOfLists_t *arrayOfListsFreeMemory = NULL, *arrayOfListsAllocatedMemory = NULL;
 
-	int nrOfListsWithFreeMemory = 0, memorySize = 0;
-
 	int nrOfMallocs = 0, nrOfFrees = 0, nrOfFragmentations = 0;
+
+	int freeMode = 0;
 
 	while (1) {
 		char choice[MAX_INPUT_SIZE];
@@ -24,11 +24,11 @@ int main() {
 		if (strcmp(choice, "INIT_HEAP") == 0) {
 			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
 
-			scanf("%s %d %d", address, &nrOfListsWithFreeMemory, &memorySize);
+			int nrOfListsWithFreeMemory = 0, memorySize = 0;
 
-			int addressLong = base16to10(removeHexaPrefix(address));
+			scanf("%s %d %d %d", address, &nrOfListsWithFreeMemory, &memorySize, &freeMode);
 
-			free(address);
+			long addressLong = base16to10(removeHexaPrefix(address));
 
 			arrayOfListsFreeMemory = createArrayOfListsWithIncreasingSize(
 					addressLong, nrOfListsWithFreeMemory, memorySize);
@@ -41,9 +41,8 @@ int main() {
 
 			arrayOfListsAllocatedMemory->lists = (doublyLinkedList_t **) malloc( 0);
 
-
 		} else if (strcmp(choice, "MALLOC") == 0) {
-			int mallocReturn = mallocFunction(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory);
+			int mallocReturn = mallocFunction(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfFragmentations);
 
 			if (mallocReturn == 0) {
 				nrOfMallocs++;
@@ -58,9 +57,13 @@ int main() {
 
 			long addressLong = base16to10(removeHexaPrefix(address));
 
-			free(address);
+			if (addressLong != 0) {
+				int freeReturn = freeBlock(arrayOfListsAllocatedMemory, arrayOfListsFreeMemory, addressLong, freeMode);
 
-			//freeBlock(arrayOfListsAllocatedMemory, addressLong);
+				if (freeReturn == 0) {
+					nrOfFrees++;
+				}
+			}
 
 		} else if (strcmp(choice, "DUMP_MEMORY") == 0) {
 			printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfMallocs, nrOfFrees, nrOfFragmentations);

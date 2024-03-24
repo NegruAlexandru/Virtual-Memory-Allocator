@@ -5,7 +5,7 @@
 typedef struct node_t {
 	void *data;
 	struct node_t *next, *prev;
-	long address;
+	long address, origin;
 } node_t;
 
 typedef struct doublyLinkedList_t {

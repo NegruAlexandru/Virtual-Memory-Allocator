@@ -7,9 +7,10 @@
 
 arrayOfLists_t *createArrayOfListsWithIncreasingSize(long address, int number, int memorySize);
 void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory, int nrOfMallocs, int nrOfFrees, int nrOfFragmentations);
-node_t *getIdealBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded, int *sizeOfBlock);
+node_t *getIdealBlock(arrayOfLists_t *arrayOfLists, int sizeNeeded, int *sizeOfBlock);
 node_t *getAvailableBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded, int *sizeOfBlock);
-void moveBlockToArrayList(arrayOfLists_t *arrayOfListsAllocatedMemory, node_t *block, int size);
-int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory);
+void moveBlockToArrayOfLists(arrayOfLists_t *arrayOfLists, node_t *block, int size);
+int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory, int nrOfFragmentations);
+int freeBlock(arrayOfLists_t *arrayOfListsAllocatedMemory, arrayOfLists_t *arrayOfListsFreeMemory, long address, int freeMode);
 
 #endif
