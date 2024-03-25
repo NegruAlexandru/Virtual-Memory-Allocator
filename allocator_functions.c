@@ -105,6 +105,9 @@ void printMemoryDump(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arr
 node_t *getIdealBlock(arrayOfLists_t *arrayOfLists, int sizeNeeded, int *sizeOfBlock) {
 	for (int i = 0; i < arrayOfLists->number; i++) {
 		if (arrayOfLists->lists[i]->dataSize == sizeNeeded) {
+			if (arrayOfLists->lists[i]->size == 0) {
+				continue;
+			}
 			*sizeOfBlock = arrayOfLists->lists[i]->dataSize;
 			bubbleSortListByAddress(arrayOfLists->lists[i]);
 			node_t *block = removeNthPosition(arrayOfLists->lists[i], 0);
@@ -114,12 +117,15 @@ node_t *getIdealBlock(arrayOfLists_t *arrayOfLists, int sizeNeeded, int *sizeOfB
 	return NULL;
 }
 
-node_t *getAvailableBlock(arrayOfLists_t *arrayOfLists, int amountOfLists, int sizeNeeded, int *sizeOfBlock) {
+node_t *getAvailableBlock(arrayOfLists_t *arrayOfLists, int sizeNeeded, int *sizeOfBlock) {
 	int position = -1;
 	int minAddress;
 
-	for (int i = 0; i < amountOfLists; i++) {
+	for (int i = 0; i < arrayOfLists->number; i++) {
 		if (arrayOfLists->lists[i]->dataSize >= sizeNeeded) {
+			if (arrayOfLists->lists[i]->size == 0) {
+				continue;
+			}
 			bubbleSortListByAddress(arrayOfLists->lists[i]);
 
 			if (position == -1) {
@@ -163,9 +169,9 @@ void moveBlockToArrayOfLists(arrayOfLists_t *arrayOfLists, node_t *block, int si
 
 	arrayOfLists->lists[arrayOfLists->number] = createDoublyLinkedList(size);
 
-	arrayOfLists->number++;
+	addNodeToNthPosition(arrayOfLists->lists[arrayOfLists->number], block, 0);
 
-	addNodeToNthPosition(arrayOfLists->lists[arrayOfLists->number - 1], block, 0);
+	arrayOfLists->number++;
 }
 
 int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *arrayOfListsAllocatedMemory, int nrOfFragmentations) {
@@ -180,7 +186,7 @@ int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *array
 	node_t *block = getIdealBlock(arrayOfListsFreeMemory, sizeNeeded, &sizeOfBlock);
 
 	if (!block) {
-		block = getAvailableBlock(arrayOfListsFreeMemory, arrayOfListsFreeMemory->number, sizeNeeded, &sizeOfBlock);
+		block = getAvailableBlock(arrayOfListsFreeMemory, sizeNeeded, &sizeOfBlock);
 
 		if (!block) {
 			printf("Out of memory\n");
@@ -212,6 +218,7 @@ int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *array
 		moveBlockToArrayOfLists(arrayOfListsAllocatedMemory, requestedBlock, sizeNeeded);
 
 		bubbleSortListByAddress(getListWithSize(arrayOfListsAllocatedMemory, sizeNeeded));
+		bubbleSortArrayOfListsBySize(arrayOfListsAllocatedMemory->lists, arrayOfListsAllocatedMemory->number);
 
 		//remaining block being moved to free memory
 		node_t *remainingBlock;
@@ -224,6 +231,10 @@ int mallocFunction(arrayOfLists_t *arrayOfListsFreeMemory, arrayOfLists_t *array
 		moveBlockToArrayOfLists(arrayOfListsFreeMemory, remainingBlock, sizeOfBlock - sizeNeeded);
 
 		bubbleSortListByAddress(getListWithSize(arrayOfListsFreeMemory, sizeOfBlock - sizeNeeded));
+		bubbleSortArrayOfListsBySize(arrayOfListsFreeMemory->lists, arrayOfListsFreeMemory->number);
+
+		//printf("Splitting block %ld into %ld and %ld\n", block->address, requestedBlock->address, remainingBlock->address);
+		//printf("origin: %ld %ld %ld\n", block->origin, requestedBlock->origin, remainingBlock->origin);
 
 		free(block->data);
 		free(block);
@@ -301,4 +312,103 @@ int freeBlock(arrayOfLists_t *arrayOfListsAllocatedMemory, arrayOfLists_t *array
 			return 0;
 		}
 	}
+
+	return -1;
+}
+
+void deleteArrayOfLists(arrayOfLists_t *arrayOfLists) {
+	for (int i = 0; i < arrayOfLists->number; i++) {
+		node_t *current = arrayOfLists->lists[i]->head;
+
+		while (current != NULL) {
+			free(current->data);
+			node_t *tmp = current;
+			current = current->next;
+			free(tmp);
+		}
+
+		free(arrayOfLists->lists[i]);
+	}
+
+	free(arrayOfLists->lists);
+	free(arrayOfLists);
+}
+
+int isSpaceToWrite(arrayOfLists_t *arrayOfLists, long address, int sizeToWrite) {
+	while (sizeToWrite > 0) {
+		int size = getSizeOfPartialBlockByAddress(arrayOfLists, address);
+
+		if (!size) {
+			return 0;
+		}
+
+		if (size >= sizeToWrite) {
+			return 1;
+		}
+
+		address += size;
+		sizeToWrite -= size;
+	}
+
+	return 1;
+}
+
+void writeToAllocatedMemory(arrayOfLists_t *arrayOfLists, char *data, long address, int sizeToWrite) {
+	while (sizeToWrite > 0) {
+		int size = getSizeOfPartialBlockByAddress(arrayOfLists, address);
+
+		node_t *block = getNodeByAddress(arrayOfLists, address);
+
+		if (size >= sizeToWrite) {
+			memcpy(block->data, data, sizeToWrite);
+			return;
+		}
+
+		address += size;
+		sizeToWrite -= size;
+	}
+}
+
+int isRequestedMemoryAllocated(arrayOfLists_t *arrayOfLists, long address, int sizeToRead) {
+	while (sizeToRead > 0) {
+		int size = getSizeOfPartialBlockByAddress(arrayOfLists, address);
+		if (!size) {
+			return 0;
+		}
+
+		if (size >= sizeToRead) {
+			return 1;
+		}
+
+		address += size;
+		sizeToRead -= size;
+	}
+
+	return 1;
+}
+
+char *readFromAllocatedMemory(arrayOfLists_t *arrayOfLists, long address, int sizeToRead) {
+	char *data = (char *)malloc(sizeToRead * sizeof(char));
+	char *dataStart = data;
+
+	while (sizeToRead > 0) {
+		int size = getSizeOfPartialBlockByAddress(arrayOfLists, address);
+
+		char *blockData = getPartialBlockDataByAddress(arrayOfLists, address);
+
+		if (size >= sizeToRead) {
+			memcpy(data, blockData, sizeToRead);
+			return dataStart;
+		}
+
+		memcpy(data, data, size);
+
+		data += size;
+		address += size;
+		sizeToRead -= size;
+
+		free(blockData);
+	}
+
+	return dataStart;
 }

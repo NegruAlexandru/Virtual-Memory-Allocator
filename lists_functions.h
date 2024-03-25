@@ -16,6 +16,10 @@ node_t *createEmptyNodeWithOrigin(int data_size, long address, long origin);
 void bubbleSortListByAddress(doublyLinkedList_t *list);
 void bubbleSortArrayOfListsBySize(doublyLinkedList_t **array, int size);
 doublyLinkedList_t *getListWithSize(arrayOfLists_t *arrayOfLists, int size);
-int isNodeComplete(node_t *node, arrayOfLists_t *arrayOfLists);
+//int isNodeComplete(node_t *node, arrayOfLists_t *arrayOfLists);
+int getSizeOfBlockByAddress(arrayOfLists_t *arrayOfLists, long address);
+node_t *getNodeByAddress(arrayOfLists_t *arrayOfLists, long address);
+int getSizeOfPartialBlockByAddress(arrayOfLists_t *arrayOfLists, long address);
+char *getPartialBlockDataByAddress(arrayOfLists_t *arrayOfLists, long address);
 
 #endif

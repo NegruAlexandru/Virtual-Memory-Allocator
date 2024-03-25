@@ -64,6 +64,50 @@ int main() {
 					nrOfFrees++;
 				}
 			}
+		} else if (strcmp(choice, "WRITE") == 0) {
+			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
+			char *data = (char *) malloc(100 * sizeof(char));
+			int sizeToWrite = 0;
+
+			scanf("%s %s %d", address, data, &sizeToWrite);
+
+			data = removeDoubleQuotes(data);
+
+			if (sizeToWrite > strlen(data)) {
+				sizeToWrite = strlen(data);
+			}
+
+			long addressLong = base16to10(removeHexaPrefix(address));
+
+			if (isSpaceToWrite(arrayOfListsAllocatedMemory, addressLong, sizeToWrite)) {
+				writeToAllocatedMemory(arrayOfListsAllocatedMemory, data, addressLong, sizeToWrite);
+			} else {
+				printf("Segmentation fault (core dumped)\n");
+				printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfMallocs, nrOfFrees, nrOfFragmentations);
+			}
+
+		} else if (strcmp(choice, "READ") == 0) {
+			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
+			int sizeToRead = 0;
+
+			scanf("%s %d", address, &sizeToRead);
+
+			long addressLong = base16to10(removeHexaPrefix(address));
+
+			if (isRequestedMemoryAllocated(arrayOfListsAllocatedMemory, addressLong, sizeToRead)) {
+				char *data = readFromAllocatedMemory(arrayOfListsAllocatedMemory, addressLong, sizeToRead);
+				printf("%s\n", data);
+
+				free(data);
+			} else {
+				printf("Segmentation fault (core dumped)\n");
+				printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfMallocs, nrOfFrees, nrOfFragmentations);
+			}
+
+		} else if (strcmp(choice, "DESTROY_HEAP") == 0) {
+			deleteArrayOfLists(arrayOfListsFreeMemory);
+			deleteArrayOfLists(arrayOfListsAllocatedMemory);
+			break;
 
 		} else if (strcmp(choice, "DUMP_MEMORY") == 0) {
 			printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfMallocs, nrOfFrees, nrOfFragmentations);

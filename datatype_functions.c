@@ -84,3 +84,18 @@ char *removeHexaPrefix(char *hex) {
 	free(hex);
 	return newHex;
 }
+
+char *removeDoubleQuotes(char *string) {
+	char *newString = (char *) malloc(100 * sizeof(char));
+	int i = 1;
+
+	while (string[i] != '\0') {
+		newString[i - 1] = string[i];
+		i++;
+	}
+
+	newString[i - 2] = '\0';
+
+	free(string);
+	return newString;
+}

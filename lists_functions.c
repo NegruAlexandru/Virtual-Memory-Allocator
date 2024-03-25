@@ -352,3 +352,67 @@ node_t *removeNeighbourNode(node_t *node, arrayOfLists_t *arrayOfLists, int *siz
 //
 //	return -1;
 //}
+
+int getSizeOfBlockByAddress(arrayOfLists_t *arrayOfLists, long address) {
+	for (int i = 0; i < arrayOfLists->number; i++) {
+		node_t *current = arrayOfLists->lists[i]->head;
+
+		while (current != NULL) {
+			if (current->address == address) {
+				return arrayOfLists->lists[i]->dataSize;
+			}
+
+			current = current->next;
+		}
+	}
+
+	return 0;
+}
+
+node_t *getNodeByAddress(arrayOfLists_t *arrayOfLists, long address) {
+	for (int i = 0; i < arrayOfLists->number; i++) {
+		node_t *current = arrayOfLists->lists[i]->head;
+
+		while (current != NULL) {
+			if (current->address == address) {
+				return current;
+			}
+
+			current = current->next;
+		}
+	}
+
+	return NULL;
+}
+
+int getSizeOfPartialBlockByAddress(arrayOfLists_t *arrayOfLists, long address) {
+	for (int i = 0; i < arrayOfLists->number; i++) {
+		node_t *current = arrayOfLists->lists[i]->head;
+
+		while (current != NULL) {
+			if (current->address <= address && address < current->address + arrayOfLists->lists[i]->dataSize) {
+				return arrayOfLists->lists[i]->dataSize - (address - current->address);
+			}
+
+			current = current->next;
+		}
+	}
+
+	return 0;
+}
+
+char *getPartialBlockDataByAddress(arrayOfLists_t *arrayOfLists, long address) {
+	for (int i = 0; i < arrayOfLists->number; i++) {
+		node_t *current = arrayOfLists->lists[i]->head;
+
+		while (current != NULL) {
+			if (current->address <= address && address < current->address + arrayOfLists->lists[i]->dataSize) {
+				return (char *)current->data + (address - current->address);
+			}
+
+			current = current->next;
+		}
+	}
+
+	return NULL;
+}
