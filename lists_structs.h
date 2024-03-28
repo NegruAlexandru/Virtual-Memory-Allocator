@@ -9,13 +9,13 @@ typedef struct node_t {
 } node_t;
 
 typedef struct doublyLinkedList_t {
-	int size, dataSize;
+	int size, data_size;
 	node_t *head;
 } doublyLinkedList_t;
 
 typedef struct arrayOfLists_t {
 	doublyLinkedList_t **lists;
 	int number, memorySize;
-} arrayOfLists_t;
+} array_of_lists_t;
 
 #endif

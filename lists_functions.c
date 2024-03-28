@@ -4,7 +4,7 @@
 #include "lists_functions.h"
 #include <string.h>
 #include <errno.h>
-#include <datatype_functions.h>
+#include "datatype_functions.h"
 #define DIE(assertion, call_description)				\
         do {								\
                 if (assertion) {					\
@@ -15,42 +15,22 @@
                 }							\
         } while (0)
 
-void printListLong(doublyLinkedList_t *list) {
-	node_t *current = list->head;
-	while (current != NULL) {
-		printf("%ld ", *(long *)current->data);
-		current = current->next;
-	}
-	printf("\n");
-}
-
-void printListChar(doublyLinkedList_t *list) {
-	node_t *current = list->head;
-	while (current != NULL) {
-		printf("%s ", (char *)current->data);
-		current = current->next;
-	}
-	printf("\n");
-}
-
 doublyLinkedList_t *createDoublyLinkedList(int dataSize) {
 	doublyLinkedList_t *list = (doublyLinkedList_t *) malloc(sizeof(doublyLinkedList_t));
 
 	list->size = 0;
-	list->dataSize = dataSize;
+	list->data_size = dataSize;
 	list->head = NULL;
 
 	return list;
 }
 
-void createNodeNthPosition(doublyLinkedList_t *list, int position, void *data, long address) {
+void createNodeNthPosition(doublyLinkedList_t *list, int position, long address) {
 	node_t *newNode = (node_t *) malloc(sizeof(node_t));
 	DIE(newNode == NULL, "malloc");
 
-	newNode->data = malloc(list->dataSize);
+	newNode->data = malloc(list->data_size);
 	DIE(newNode->data == NULL, "malloc");
-
-	memcpy(newNode->data, data, list->dataSize);
 
 	newNode->address = address;
 	newNode->origin = -1;
@@ -86,7 +66,7 @@ void createNodeNthPosition(doublyLinkedList_t *list, int position, void *data, l
 	list->size++;
 }
 
-node_t *removeNthPosition(doublyLinkedList_t *list, int position) {
+node_t *remove_nth_position(doublyLinkedList_t *list, int position) {
 	node_t *current = list->head;
 
 	if (position >= list->size) {
@@ -121,24 +101,14 @@ node_t *removeNthPosition(doublyLinkedList_t *list, int position) {
 
 node_t *removeNodeByAddress(doublyLinkedList_t *list, long address) {
 	node_t *current = list->head;
+	int position = 0;
 
 	while (current != NULL) {
 		if (current->address == address) {
-			if (current == list->head) {
-				list->head = list->head->next;
-
-				if (list->head != NULL)
-					list->head->prev = NULL;
-			} else {
-				current->prev->next = current->next;
-				if (current->next != NULL) {
-					current->next->prev = current->prev;
-				}
-			}
-			list->size--;
-			return current;
+			return remove_nth_position(list, position);
 		}
 		current = current->next;
+		position++;
 	}
 
 	return NULL;
@@ -195,7 +165,7 @@ node_t *createEmptyNodeWithOrigin(int data_size, long address, long origin) {
 	return newNode;
 }
 
-void bubbleSortListByAddress(doublyLinkedList_t *list) {
+void sort_by_address(doublyLinkedList_t *list) {
 	if (list == NULL || list->head == NULL) {
 		return;
 	}
@@ -229,15 +199,17 @@ void bubbleSortListByAddress(doublyLinkedList_t *list) {
 	while (swapped);
 }
 
-void bubbleSortArrayOfListsBySize(doublyLinkedList_t **array, int size) {
+void bubbleSortArrayOfListsBySize(array_of_lists_t *array_of_lists) {
 	int swapped;
+	doublyLinkedList_t **array = array_of_lists->lists;
+	int size = array_of_lists->number;
 	doublyLinkedList_t *temp;
 
 	do {
 		swapped = 0;
 
 		for (int i = 0; i < size - 1; i++) {
-			if (array[i]->dataSize > array[i + 1]->dataSize) {
+			if (array[i]->data_size > array[i + 1]->data_size) {
 				temp = array[i];
 				array[i] = array[i + 1];
 				array[i + 1] = temp;
@@ -248,9 +220,9 @@ void bubbleSortArrayOfListsBySize(doublyLinkedList_t **array, int size) {
 	while (swapped);
 }
 
-doublyLinkedList_t *getListWithSize(arrayOfLists_t *arrayOfLists, int size) {
+doublyLinkedList_t *getListWithSize(array_of_lists_t *arrayOfLists, int size) {
 	for (int i = 0; i < arrayOfLists->number; i++) {
-		if (arrayOfLists->lists[i]->dataSize == size) {
+		if (arrayOfLists->lists[i]->data_size == size) {
 			return arrayOfLists->lists[i];
 		}
 	}
@@ -290,7 +262,7 @@ void addNodeToNthPosition(doublyLinkedList_t *list, node_t *node, int position) 
 
 }
 
-node_t *removeNAddress(arrayOfLists_t *arrayOfLists, long address, int *nodeSize) {
+node_t *removeNAddress(array_of_lists_t *arrayOfLists, long address, int *nodeSize) {
 
 	for (int i = 0; i < arrayOfLists->number; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
@@ -299,8 +271,8 @@ node_t *removeNAddress(arrayOfLists_t *arrayOfLists, long address, int *nodeSize
 
 		while (current != NULL) {
 			if (current->address == address) {
-				*nodeSize = arrayOfLists->lists[i]->dataSize;
-				return removeNthPosition(arrayOfLists->lists[i], position);
+				*nodeSize = arrayOfLists->lists[i]->data_size;
+				return remove_nth_position(arrayOfLists->lists[i], position);
 			}
 
 			current = current->next;
@@ -311,20 +283,26 @@ node_t *removeNAddress(arrayOfLists_t *arrayOfLists, long address, int *nodeSize
 	return NULL;
 }
 
-node_t *removeNeighbourNode(node_t *node, arrayOfLists_t *arrayOfLists, int *sizeOfBlock, int *sizeOfNeighbour) {
-	node_t *current;
+node_t *removeNeighbourNode(node_t *node, array_of_lists_t *arrayOfLists, int *sizeOfBlock, int *sizeOfNeighbour) {
+	node_t *current = NULL;
 
 	for (int i = 0; i < arrayOfLists->number; i++) {
 		current = arrayOfLists->lists[i]->head;
+		sort_by_address(arrayOfLists->lists[i]);
 
-		while (current != NULL) {
-			if (current->address + arrayOfLists->lists[i]->dataSize == node->address && current->origin == node->origin) {
-				*sizeOfNeighbour = arrayOfLists->lists[i]->dataSize;
+		while (current) {
+			if (current->origin != node->origin) {
+				current = current->next;
+				continue;
+			}
+
+			if (current->address + arrayOfLists->lists[i]->data_size == node->address) {
+				*sizeOfNeighbour = arrayOfLists->lists[i]->data_size;
 				return removeNodeByAddress(arrayOfLists->lists[i], current->address);
 			}
 
-			if (current->address == node->address + *sizeOfBlock && current->origin == node->origin) {
-				*sizeOfNeighbour = arrayOfLists->lists[i]->dataSize;
+			if (current->address == node->address + *sizeOfBlock) {
+				*sizeOfNeighbour = arrayOfLists->lists[i]->data_size;
 				return removeNodeByAddress(arrayOfLists->lists[i], current->address);
 			}
 
@@ -335,14 +313,14 @@ node_t *removeNeighbourNode(node_t *node, arrayOfLists_t *arrayOfLists, int *siz
 	return NULL;
 }
 
-//int isNodeComplete(node_t *node, arrayOfLists_t *arrayOfLists) {
+//int isNodeComplete(node_t *node, array_of_lists_t *arrayOfLists) {
 //	node_t *current;
 //
 //	for (int i = 0; i < arrayOfLists->number; i++) {
 //		current = arrayOfLists->lists[i]->head;
 //
 //		while (current != NULL) {
-//			if (current->address + arrayOfLists->lists[i]->dataSize == node->address && ) {
+//			if (current->address + arrayOfLists->lists[i]->data_size == node->address && ) {
 //				return 1;
 //			}
 //
@@ -353,13 +331,13 @@ node_t *removeNeighbourNode(node_t *node, arrayOfLists_t *arrayOfLists, int *siz
 //	return -1;
 //}
 
-int getSizeOfBlockByAddress(arrayOfLists_t *arrayOfLists, long address) {
+int getSizeOfBlockByAddress(array_of_lists_t *arrayOfLists, long address) {
 	for (int i = 0; i < arrayOfLists->number; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
 
 		while (current != NULL) {
 			if (current->address == address) {
-				return arrayOfLists->lists[i]->dataSize;
+				return arrayOfLists->lists[i]->data_size;
 			}
 
 			current = current->next;
@@ -369,7 +347,7 @@ int getSizeOfBlockByAddress(arrayOfLists_t *arrayOfLists, long address) {
 	return 0;
 }
 
-node_t *getNodeByAddress(arrayOfLists_t *arrayOfLists, long address) {
+node_t *getNodeByAddress(array_of_lists_t *arrayOfLists, long address) {
 	for (int i = 0; i < arrayOfLists->number; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
 
@@ -385,13 +363,13 @@ node_t *getNodeByAddress(arrayOfLists_t *arrayOfLists, long address) {
 	return NULL;
 }
 
-int getSizeOfPartialBlockByAddress(arrayOfLists_t *arrayOfLists, long address) {
+int getSizeOfPartialBlockByAddress(array_of_lists_t *arrayOfLists, long address) {
 	for (int i = 0; i < arrayOfLists->number; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
 
 		while (current != NULL) {
-			if (current->address <= address && address < current->address + arrayOfLists->lists[i]->dataSize) {
-				return arrayOfLists->lists[i]->dataSize - (address - current->address);
+			if (current->address <= address && address < current->address + arrayOfLists->lists[i]->data_size) {
+				return arrayOfLists->lists[i]->data_size - (address - current->address);
 			}
 
 			current = current->next;
@@ -401,12 +379,12 @@ int getSizeOfPartialBlockByAddress(arrayOfLists_t *arrayOfLists, long address) {
 	return 0;
 }
 
-char *getPartialBlockDataByAddress(arrayOfLists_t *arrayOfLists, long address) {
+char *getPartialBlockDataByAddress(array_of_lists_t *arrayOfLists, long address) {
 	for (int i = 0; i < arrayOfLists->number; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
 
 		while (current != NULL) {
-			if (current->address <= address && address < current->address + arrayOfLists->lists[i]->dataSize) {
+			if (current->address <= address && address < current->address + arrayOfLists->lists[i]->data_size) {
 				return (char *)current->data + (address - current->address);
 			}
 
