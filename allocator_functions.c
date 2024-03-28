@@ -6,76 +6,68 @@
 #include "lists_functions.h"
 #include "datatype_functions.h"
 
-array_of_lists_t *createArrayOfListsWithIncreasingSize(long address, int number, int memorySize) {
-	array_of_lists_t *arr = (array_of_lists_t *)malloc(sizeof(array_of_lists_t));
+aol_t *aol_create_increasing_size(long address, int number, int memory_size) {
+	aol_t *arr = (aol_t *)malloc(sizeof(aol_t));
+	DIE(!arr, "malloc");
 
-	arr->lists = (doublyLinkedList_t **)malloc(number * sizeof(doublyLinkedList_t *));
+	arr->lists = (dll_t **)malloc(number * sizeof(dll_t *));
+	DIE(!arr->lists, "malloc");
 
-	arr->number = number;
+	arr->size = number;
 
-	arr->memorySize = memorySize;
-
-	int dataSize = 8;
+	int data_size = 8;
 
 	for (int i = 0; i < number; i++) {
-		arr->lists[i] = createDoublyLinkedList(dataSize);
+		arr->lists[i] = dll_create(data_size);
 
-		for (int j = 0; j < memorySize / dataSize; j++) {
-			createNodeNthPosition(arr->lists[i], j, address + j * dataSize + i * memorySize);
+		for (int j = 0; j < memory_size / data_size; j++) {
+			dll_create_node(arr->lists[i], j, address + j * data_size + i * memory_size);
 		}
 
-		dataSize *= 2;
+		data_size *= 2;
 	}
 
 	return arr;
 }
 
-void printMemoryDump(array_of_lists_t *arrayOfListsFreeMemory, array_of_lists_t *arrayOfListsAllocatedMemory, int nrOfMallocs, int nrOfFrees, int nrOfFragmentations) {
-	int totalAllocatedMemory = 0;
-	int totalFreeMemory = 0;
+void print_memory_dump(aol_t *aol_free_memory, aol_t *aol_allocated_memory, int nr_of_mallocs, int nr_of_frees, int nr_of_fragmentations) {
+	int total_allocated_memory = 0;
+	int total_free_memory = 0;
 
-	bubbleSortArrayOfListsBySize(arrayOfListsAllocatedMemory);
-	bubbleSortArrayOfListsBySize(arrayOfListsFreeMemory);
+	aol_sort(aol_allocated_memory);
+	aol_sort(aol_free_memory);
 
-	for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
-		totalFreeMemory += arrayOfListsFreeMemory->lists[i]->size * arrayOfListsFreeMemory->lists[i]->data_size;
+	int free_blocks = 0;
+	for (int i = 0; i < aol_free_memory->size; i++) {
+		total_free_memory += aol_free_memory->lists[i]->size * aol_free_memory->lists[i]->data_size;
+		free_blocks += aol_free_memory->lists[i]->size;
 	}
 
-	for (int i = 0; i < arrayOfListsAllocatedMemory->number; i++) {
-		totalAllocatedMemory += arrayOfListsAllocatedMemory->lists[i]->size * arrayOfListsAllocatedMemory->lists[i]->data_size;
+	int allocated_blocks = 0;
+	for (int i = 0; i < aol_allocated_memory->size; i++) {
+		total_allocated_memory += aol_allocated_memory->lists[i]->size * aol_allocated_memory->lists[i]->data_size;
+		allocated_blocks += aol_allocated_memory->lists[i]->size;
 	}
 
 	printf("+++++DUMP+++++\n");
-	printf("Total memory: %d bytes\n", totalFreeMemory + totalAllocatedMemory);
-	printf("Total allocated memory: %d bytes\n", totalAllocatedMemory);
-	printf("Total free memory: %d bytes\n", totalFreeMemory);
-
-	int freeBlocks = 0;
-	for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
-		freeBlocks += arrayOfListsFreeMemory->lists[i]->size;
-	}
-	printf("Free blocks: %d\n", freeBlocks);
-
-	int allocatedBlocks = 0;
-	for (int i = 0; i < arrayOfListsAllocatedMemory->number; i++) {
-		allocatedBlocks += arrayOfListsAllocatedMemory->lists[i]->size;
-	}
-	printf("Number of allocated blocks: %d\n", allocatedBlocks);
-
-	printf("Number of malloc calls: %d\n", nrOfMallocs);
-	printf("Number of fragmentations: %d\n", nrOfFragmentations);
-	printf("Number of free calls: %d\n", nrOfFrees);
-
-	for (int i = 0; i < arrayOfListsFreeMemory->number; i++) {
-		if (arrayOfListsFreeMemory->lists[i]->size == 0) {
+	printf("Total memory: %d bytes\n", total_free_memory + total_allocated_memory);
+	printf("Total allocated memory: %d bytes\n", total_allocated_memory);
+	printf("Total free memory: %d bytes\n", total_free_memory);
+	printf("Free blocks: %d\n", free_blocks);
+	printf("Number of allocated blocks: %d\n", allocated_blocks);
+	printf("Number of malloc calls: %d\n", nr_of_mallocs);
+	printf("Number of fragmentations: %d\n", nr_of_fragmentations);
+	printf("Number of free calls: %d\n", nr_of_frees);
+	for (int i = 0; i < aol_free_memory->size; i++) {
+		if (aol_free_memory->lists[i]->size == 0) {
 			continue;
 		}
-		int dataSize = arrayOfListsFreeMemory->lists[i]->data_size;
-		int size = arrayOfListsFreeMemory->lists[i]->size;
+		int data_size = aol_free_memory->lists[i]->data_size;
+		int size = aol_free_memory->lists[i]->size;
 
-		printf("Blocks with %d bytes - %d free block(s) :", dataSize, size);
+		printf("Blocks with %d bytes - %d free block(s) :", data_size, size);
 
-		node_t *current = arrayOfListsFreeMemory->lists[i]->head;
+		node_t *current = aol_free_memory->lists[i]->head;
 
 		for (int j = 0; j < size; j++) {
 			printf(" 0x%lx", current->address);
@@ -83,63 +75,60 @@ void printMemoryDump(array_of_lists_t *arrayOfListsFreeMemory, array_of_lists_t 
 		}
 		printf("\n");
 	}
-
 	printf("Allocated blocks :");
 
 	long address = -1;
 
-	//print allocated blocks sorted by address increasing
-	for (int i = 0; i < allocatedBlocks; i++) {
-		long minAddress = 0xfffffff;
+	for (int i = 0; i < allocated_blocks; i++) {
+		long min_address = 0xfffffff;
 
-		for (int j = 0; j < arrayOfListsAllocatedMemory->number; j++) {
-			if (arrayOfListsAllocatedMemory->lists[j]->size == 0) {
+		for (int j = 0; j < aol_allocated_memory->size; j++) {
+			if (aol_allocated_memory->lists[j]->size == 0) {
 				continue;
 			}
 
-			node_t *current = arrayOfListsAllocatedMemory->lists[j]->head;
+			node_t *current = aol_allocated_memory->lists[j]->head;
 
-			for (int k = 0; k < arrayOfListsAllocatedMemory->lists[j]->size; k++) {
-				if (current->address < minAddress && current->address > address) {
-					minAddress = current->address;
+			for (int k = 0; k < aol_allocated_memory->lists[j]->size; k++) {
+				if (current->address < min_address && current->address > address) {
+					min_address = current->address;
 				}
 				current = current->next;
 			}
 		}
 
-		address = minAddress;
-		printf(" (0x%lx - %d)", address, getSizeOfBlockByAddress(arrayOfListsAllocatedMemory, address));
+		address = min_address;
+		printf(" (0x%lx - %d)", address, node_get_size_of_block(aol_allocated_memory, address));
 	}
 
 	printf("\n");
-
 	printf("-----DUMP-----\n");
 }
 
-node_t *getIdealBlock(array_of_lists_t *arrayOfLists, int sizeNeeded, int *sizeOfBlock) {
-	for (int i = 0; i < arrayOfLists->number; i++) {
-		if (arrayOfLists->lists[i]->data_size == sizeNeeded) {
-			if (arrayOfLists->lists[i]->size == 0) {
+node_t *node_get_ideal_block(aol_t *aol, int size_needed, int *size_of_block) {
+	for (int i = 0; i < aol->size; i++) {
+		if (aol->lists[i]->data_size == size_needed) {
+			if (aol->lists[i]->size == 0) {
 				continue;
 			}
-			*sizeOfBlock = arrayOfLists->lists[i]->data_size;
-			sort_by_address(arrayOfLists->lists[i]);
-			node_t *block = remove_nth_position(arrayOfLists->lists[i], 0);
+			*size_of_block = aol->lists[i]->data_size;
+			dll_sort_by_address(aol->lists[i]);
+			node_t *block = dll_remove_by_pos(aol->lists[i], 0);
 			return block;
 		}
 	}
 	return NULL;
 }
 
-node_t *getAvailableBlock(array_of_lists_t *array_lists, int size_needed, int *size_block) {
+node_t *node_get_available_block(aol_t *aol, int size_needed, int *size_block) {
 	int position = -1;
 
-	for (int i = 0; i < array_lists->number; i++) {
-		if (array_lists->lists[i]->data_size > size_needed) {
-			if (array_lists->lists[i]->size == 0) {
+	for (int i = 0; i < aol->size; i++) {
+		if (aol->lists[i]->data_size > size_needed) {
+			if (aol->lists[i]->size == 0) {
 				continue;
 			}
-			sort_by_address(array_lists->lists[i]);
+			dll_sort_by_address(aol->lists[i]);
 
 			position = i;
 
@@ -151,49 +140,46 @@ node_t *getAvailableBlock(array_of_lists_t *array_lists, int size_needed, int *s
 		return NULL;
 	}
 
-	*size_block = array_lists->lists[position]->data_size;
-	sort_by_address(array_lists->lists[position]);
-	node_t *block = remove_nth_position(array_lists->lists[position], 0);
+	*size_block = aol->lists[position]->data_size;
+	dll_sort_by_address(aol->lists[position]);
+	node_t *block = dll_remove_by_pos(aol->lists[position], 0);
 	return block;
 }
 
-void moveBlockToArrayOfLists(array_of_lists_t *arrayOfLists, node_t *block, int size) {
-	for (int i = 0; i < arrayOfLists->number; i++) {
-		if (arrayOfLists->lists[i]->data_size == size) {
-			addNodeToNthPosition(arrayOfLists->lists[i], block, arrayOfLists->lists[i]->size);
+void move_block_to_aol(aol_t *aol, node_t *block, int size) {
+	for (int i = 0; i < aol->size; i++) {
+		if (aol->lists[i]->data_size == size) {
+			dll_add_by_pos(aol->lists[i], block, aol->lists[i]->size);
 			return;
 		}
 	}
 
-	doublyLinkedList_t **tmp = (doublyLinkedList_t **)realloc(arrayOfLists->lists, (arrayOfLists->number + 1) * sizeof(doublyLinkedList_t *));
+	dll_t **tmp = (dll_t **)realloc(aol->lists, (aol->size + 1) * sizeof(dll_t *));
 
-	if (!tmp) {
-		printf("Realloc fail\n");
-		return;
-	}
+	DIE(!tmp, "realloc");
 
-	arrayOfLists->lists = tmp;
+	aol->lists = tmp;
 
-	arrayOfLists->lists[arrayOfLists->number] = createDoublyLinkedList(size);
+	aol->lists[aol->size] = dll_create(size);
 
-	addNodeToNthPosition(arrayOfLists->lists[arrayOfLists->number], block, 0);
+	dll_add_by_pos(aol->lists[aol->size], block, 0);
 
-	arrayOfLists->number++;
+	aol->size++;
 }
 
-int mallocFunction(array_of_lists_t *arrayOfListsFreeMemory, array_of_lists_t *arrayOfListsAllocatedMemory, int nrOfFragmentations, long *fragment_group) {
+int malloc_function(aol_t *aol_free_memory, aol_t *aol_allocated_memory, long *fragment_group) {
 	//requested size
-	int sizeNeeded;
-	scanf("%d", &sizeNeeded);
+	int size_needed;
+	scanf("%d", &size_needed);
 
 	//modified by getBlock functions
-	int sizeOfBlock = 0;
+	int size_of_block = 0;
 
 	//searching for free block
-	node_t *block = getIdealBlock(arrayOfListsFreeMemory, sizeNeeded, &sizeOfBlock);
+	node_t *block = node_get_ideal_block(aol_free_memory, size_needed, &size_of_block);
 
 	if (!block) {
-		block = getAvailableBlock(arrayOfListsFreeMemory, sizeNeeded, &sizeOfBlock);
+		block = node_get_available_block(aol_free_memory, size_needed, &size_of_block);
 
 		if (!block) {
 			printf("Out of memory\n");
@@ -202,39 +188,39 @@ int mallocFunction(array_of_lists_t *arrayOfListsFreeMemory, array_of_lists_t *a
 	}
 
 	//if block is exactly the size needed
-	if (sizeOfBlock == sizeNeeded) {
+	if (size_of_block == size_needed) {
 		// block being moved to allocated memory
-		moveBlockToArrayOfLists(arrayOfListsAllocatedMemory, block, sizeOfBlock);
+		move_block_to_aol(aol_allocated_memory, block, size_of_block);
 
-		sort_by_address(getListWithSize(arrayOfListsAllocatedMemory, sizeOfBlock));
-		bubbleSortArrayOfListsBySize(arrayOfListsAllocatedMemory);
+		dll_sort_by_address(aol_get_list_by_size(aol_allocated_memory, size_of_block));
+		aol_sort(aol_allocated_memory);
 
 		return 0;
 	}
 
 	//if block is bigger than the size needed
-	if (sizeOfBlock > sizeNeeded) {
-
-
-		node_t *requestedBlock;
-		node_t *remainingBlock;
+	if (size_of_block > size_needed) {
+		node_t *requested_block;
+		node_t *remaining_block;
 
 		if (block->origin >= 0) {
-			requestedBlock = createEmptyNodeWithOrigin(sizeNeeded, block->address, block->origin);
-			remainingBlock = createEmptyNodeWithOrigin(sizeOfBlock - sizeNeeded, block->address + sizeNeeded, block->origin);
+			requested_block = node_create_with_origin(size_needed, block->address, block->origin);
+			remaining_block = node_create_with_origin(size_of_block - size_needed, block->address + size_needed,
+													  block->origin);
 		} else {
-			requestedBlock = createEmptyNodeWithOrigin(sizeNeeded, block->address, *fragment_group);
-			remainingBlock = createEmptyNodeWithOrigin(sizeOfBlock - sizeNeeded, block->address + sizeNeeded, *fragment_group);
+			requested_block = node_create_with_origin(size_needed, block->address, *fragment_group);
+			remaining_block = node_create_with_origin(size_of_block - size_needed, block->address + size_needed,
+													  *fragment_group);
 			(*fragment_group) = (*fragment_group) + 1;
 		}
 
-		moveBlockToArrayOfLists(arrayOfListsAllocatedMemory, requestedBlock, sizeNeeded);
-		sort_by_address(getListWithSize(arrayOfListsAllocatedMemory, sizeNeeded));
-		bubbleSortArrayOfListsBySize(arrayOfListsAllocatedMemory);
+		move_block_to_aol(aol_allocated_memory, requested_block, size_needed);
+		dll_sort_by_address(aol_get_list_by_size(aol_allocated_memory, size_needed));
+		aol_sort(aol_allocated_memory);
 
-		moveBlockToArrayOfLists(arrayOfListsFreeMemory, remainingBlock, sizeOfBlock - sizeNeeded);
-		sort_by_address(getListWithSize(arrayOfListsFreeMemory, sizeOfBlock - sizeNeeded));
-		bubbleSortArrayOfListsBySize(arrayOfListsFreeMemory);
+		move_block_to_aol(aol_free_memory, remaining_block, size_of_block - size_needed);
+		dll_sort_by_address(aol_get_list_by_size(aol_free_memory, size_of_block - size_needed));
+		aol_sort(aol_free_memory);
 
 		free(block->data);
 		free(block);
@@ -245,46 +231,43 @@ int mallocFunction(array_of_lists_t *arrayOfListsFreeMemory, array_of_lists_t *a
 	return -1;
 }
 
-int freeBlock(array_of_lists_t *arrayOfListsAllocatedMemory, array_of_lists_t *arrayOfListsFreeMemory, long address, int freeMode) {
-	int blockSize = 0;
+int free_function(aol_t *aol_allocated_memory, aol_t *aol_free_memory, long address, int free_mode) {
+	int block_size = 0;
 
-	node_t *block = removeNAddress(arrayOfListsAllocatedMemory, address, &blockSize);
+	node_t *block = aol_remove_by_addr(aol_allocated_memory, address, &block_size);
 
 	if (!block) {
 		printf("Invalid free\n");
 		return -1;
 	}
 
-	if (freeMode == 0) {
-		moveBlockToArrayOfLists(arrayOfListsFreeMemory, block, blockSize);
-		sort_by_address(getListWithSize(arrayOfListsFreeMemory, blockSize));
+	if (free_mode == 0) {
+		move_block_to_aol(aol_free_memory, block, block_size);
+		dll_sort_by_address(aol_get_list_by_size(aol_free_memory, block_size));
 
 		return 0;
 
-	} else if (freeMode == 1) {
+	} else if (free_mode == 1) {
 		if (block->origin >= 0) {
 
-			int neighbourSize = 0;
+			int neighbour_size = 0;
 
-			node_t *neighbour = removeNeighbourNode(block, arrayOfListsFreeMemory, &blockSize, &neighbourSize);
+			node_t *neighbour = aol_remove_neighbour(block, aol_free_memory, &block_size, &neighbour_size);
 
 			while (neighbour) {
-				blockSize += neighbourSize;
+				block_size += neighbour_size;
 
 				if (block->address < neighbour->address) {
-					void *tmp = realloc(block->data, blockSize);
+					void *tmp = realloc(block->data, block_size);
 
-					if (!tmp) {
-						printf("Realloc fail\n");
-						return -1;
-					}
+					DIE(!tmp, "realloc");
 
 					block->data = tmp;
 
 					free(neighbour->data);
 					free(neighbour);
 				} else {
-					void *tmp = realloc(block->data, blockSize);
+					void *tmp = realloc(block->data, block_size);
 
 					if (!tmp) {
 						printf("Realloc fail\n");
@@ -298,17 +281,17 @@ int freeBlock(array_of_lists_t *arrayOfListsAllocatedMemory, array_of_lists_t *a
 					free(neighbour);
 				}
 
-				neighbour = removeNeighbourNode(block, arrayOfListsFreeMemory, &blockSize, &neighbourSize);
+				neighbour = aol_remove_neighbour(block, aol_free_memory, &block_size, &neighbour_size);
 			}
 
-			moveBlockToArrayOfLists(arrayOfListsFreeMemory, block, blockSize);
-			sort_by_address(getListWithSize(arrayOfListsFreeMemory, blockSize));
+			move_block_to_aol(aol_free_memory, block, block_size);
+			dll_sort_by_address(aol_get_list_by_size(aol_free_memory, block_size));
 
 			return 0;
 		}
 
-		moveBlockToArrayOfLists(arrayOfListsFreeMemory, block, blockSize);
-		sort_by_address(getListWithSize(arrayOfListsFreeMemory, blockSize));
+		move_block_to_aol(aol_free_memory, block, block_size);
+		dll_sort_by_address(aol_get_list_by_size(aol_free_memory, block_size));
 
 		return 0;
 	}
@@ -316,9 +299,9 @@ int freeBlock(array_of_lists_t *arrayOfListsAllocatedMemory, array_of_lists_t *a
 	return -1;
 }
 
-void deleteArrayOfLists(array_of_lists_t *arrayOfLists) {
-	for (int i = 0; i < arrayOfLists->number; i++) {
-		node_t *current = arrayOfLists->lists[i]->head;
+void delete_aol(aol_t *aol) {
+	for (int i = 0; i < aol->size; i++) {
+		node_t *current = aol->lists[i]->head;
 
 		while (current != NULL) {
 			free(current->data);
@@ -327,40 +310,40 @@ void deleteArrayOfLists(array_of_lists_t *arrayOfLists) {
 			free(tmp);
 		}
 
-		free(arrayOfLists->lists[i]);
+		free(aol->lists[i]);
 	}
 
-	free(arrayOfLists->lists);
-	free(arrayOfLists);
+	free(aol->lists);
+	free(aol);
 }
 
-int isSpaceToWrite(array_of_lists_t *arrayOfLists, long address, int sizeToWrite) {
-	while (sizeToWrite > 0) {
-		int size = getSizeOfPartialBlockByAddress(arrayOfLists, address);
+int is_space_to_write(aol_t *aol, long address, int size_to_write) {
+	while (size_to_write > 0) {
+		int size = node_get_size_of_partial_block(aol, address);
 
 		if (!size) {
 			return 0;
 		}
 
-		if (size >= sizeToWrite) {
+		if (size >= size_to_write) {
 			return 1;
 		}
 
 		address += size;
-		sizeToWrite -= size;
+		size_to_write -= size;
 	}
 
 	return 1;
 }
 
-void writeToAllocatedMemory(array_of_lists_t *arrayOfLists, char *data, long address, int sizeToWrite) {
-	while (sizeToWrite > 0) {
-		int size = getSizeOfPartialBlockByAddress(arrayOfLists, address);
+void write_to_allocated_memory(aol_t *aol, char *data, long address, int size_to_write) {
+	while (size_to_write > 0) {
+		int size = node_get_size_of_partial_block(aol, address);
 
-		node_t *block = getNodeByAddress(arrayOfLists, address);
+		node_t *block = dll_get_node_by_addr(aol, address);
 
-		if (size >= sizeToWrite) {
-			memcpy(block->data, data, sizeToWrite);
+		if (size >= size_to_write) {
+			memcpy(block->data, data, size_to_write);
 			return;
 		}
 
@@ -368,52 +351,49 @@ void writeToAllocatedMemory(array_of_lists_t *arrayOfLists, char *data, long add
 
 		data += size;
 		address += size;
-		sizeToWrite -= size;
+		size_to_write -= size;
 	}
 }
 
-int isRequestedMemoryAllocated(array_of_lists_t *arrayOfLists, long address, int sizeToRead) {
-	while (sizeToRead > 0) {
-		int size = getSizeOfPartialBlockByAddress(arrayOfLists, address);
+int is_requested_memory_allocated(aol_t *aol, long address, int size_to_read) {
+	while (size_to_read > 0) {
+		int size = node_get_size_of_partial_block(aol, address);
 		if (!size) {
 			return 0;
 		}
 
-		if (size >= sizeToRead) {
+		if (size >= size_to_read) {
 			return 1;
 		}
 
 		address += size;
-		sizeToRead -= size;
+		size_to_read -= size;
 	}
 
 	return 1;
 }
 
-char *readFromAllocatedMemory(array_of_lists_t *arrayOfLists, long address, int sizeToRead) {
-	char *data = (char *)malloc(sizeToRead * sizeof(char));
-	if (!data) {
-		printf("Malloc fail\n");
-		return NULL;
-	}
+char *read_from_allocated_memory(aol_t *aol, long address, int size_to_read) {
+	char *data = (char *)malloc(size_to_read * sizeof(char));
+	DIE(!data, "malloc");
 
-	char *dataStart = data;
+	char *data_start = data;
 
-	while (sizeToRead > 0) {
-		int size = getSizeOfPartialBlockByAddress(arrayOfLists, address);
+	while (size_to_read > 0) {
+		int size = node_get_size_of_partial_block(aol, address);
 
-		node_t *block = getNodeByAddress(arrayOfLists, address);
+		node_t *block = dll_get_node_by_addr(aol, address);
 
-		if (size >= sizeToRead) {
-			memcpy(data, block->data, sizeToRead);
-			return dataStart;
+		if (size >= size_to_read) {
+			memcpy(data, block->data, size_to_read);
+			return data_start;
 		}
 
 		memcpy(data, block->data, size);
 		data += size;
 		address += size;
-		sizeToRead -= size;
+		size_to_read -= size;
 	}
 
-	return dataStart;
+	return data_start;
 }

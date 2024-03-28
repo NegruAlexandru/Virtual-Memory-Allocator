@@ -9,16 +9,16 @@
 
 #define MAX_INPUT_SIZE 600
 #define MAX_ADDRESS_SIZE 10
-
+#define INITIAL_NUMBER_OF_LISTS_ALLOCATED 0
 int main() {
 
-	array_of_lists_t *arrayOfListsFreeMemory = NULL, *arrayOfListsAllocatedMemory = NULL;
+	aol_t *aol_free_memory = NULL, *aol_allocated_memory = NULL;
 
-	int nrOfMallocs = 0, nrOfFrees = 0, nrOfFragmentations = 0;
+	int nr_mallocs = 0, nr_frees = 0, nr_fragmentations = 0;
 
 	long fragment_group = 0;
 
-	int freeMode = 0;
+	int free_mode = 0;
 
 	while (1) {
 		char choice[MAX_INPUT_SIZE];
@@ -26,54 +26,54 @@ int main() {
 
 		if (strcmp(choice, "INIT_HEAP") == 0) {
 			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
+			DIE(!address, "malloc");
+			int nr_of_lists = 0, memory_size = 0;
 
-			int nrOfListsWithFreeMemory = 0, memorySize = 0;
+			scanf("%s %d %d %d", address, &nr_of_lists, &memory_size, &free_mode);
 
-			scanf("%s %d %d %d", address, &nrOfListsWithFreeMemory, &memorySize, &freeMode);
+			long addressLong = base16to10(remove_hexa_prefix(address));
 
-			long addressLong = base16to10(removeHexaPrefix(address));
+			aol_free_memory = aol_create_increasing_size(
+					addressLong, nr_of_lists, memory_size);
 
-			arrayOfListsFreeMemory = createArrayOfListsWithIncreasingSize(
-					addressLong, nrOfListsWithFreeMemory, memorySize);
-
-			arrayOfListsAllocatedMemory = (array_of_lists_t *) malloc(sizeof(array_of_lists_t));
-
-			arrayOfListsAllocatedMemory->number = 0;
-
-			arrayOfListsAllocatedMemory->memorySize = 0;
-
-			arrayOfListsAllocatedMemory->lists = (doublyLinkedList_t **) malloc( 0);
+			aol_allocated_memory = aol_create_increasing_size(
+					addressLong, INITIAL_NUMBER_OF_LISTS_ALLOCATED, memory_size);
 
 		} else if (strcmp(choice, "MALLOC") == 0) {
-			int mallocReturn = mallocFunction(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfFragmentations, &fragment_group);
+			int mallocReturn = malloc_function(aol_free_memory, aol_allocated_memory,
+											   &fragment_group);
 
 			if (mallocReturn == 0) {
-				nrOfMallocs++;
+				nr_mallocs++;
 			} else if (mallocReturn == 1) {
-				nrOfMallocs++;
-				nrOfFragmentations++;
+				nr_mallocs++;
+				nr_fragmentations++;
 			}
 
 		} else if (strcmp(choice, "FREE") == 0) {
 			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
+			DIE(!address, "malloc");
 			scanf("%s", address);
 
-			long addressLong = base16to10(removeHexaPrefix(address));
+			long addressLong = base16to10(remove_hexa_prefix(address));
 
 			if (addressLong != 0) {
-				int freeReturn = freeBlock(arrayOfListsAllocatedMemory, arrayOfListsFreeMemory, addressLong, freeMode);
+				int freeReturn = free_function(aol_allocated_memory, aol_free_memory, addressLong,
+											   free_mode);
 
 				if (freeReturn == 0) {
-					nrOfFrees++;
+					nr_frees++;
 				}
 			}
 		} else if (strcmp(choice, "WRITE") == 0) {
 			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
-			char *data = (char *) malloc(600 * sizeof(char));
+			DIE(!address, "malloc");
+			char *data = (char *) malloc(MAX_INPUT_SIZE * sizeof(char));
+			DIE(!data, "malloc");
 			int sizeToWrite = 0;
 
 			scanf("%s", address);
-			fgets(data, 600, stdin);
+			fgets(data, MAX_INPUT_SIZE, stdin);
 
 			char *token = strtok(data, "\"");
 			token = strtok(NULL, "\"");
@@ -84,15 +84,16 @@ int main() {
 				sizeToWrite = strlen(token);
 			}
 
-			long addressLong = base16to10(removeHexaPrefix(address));
+			long addressLong = base16to10(remove_hexa_prefix(address));
 
-			if (isSpaceToWrite(arrayOfListsAllocatedMemory, addressLong, sizeToWrite)) {
-				writeToAllocatedMemory(arrayOfListsAllocatedMemory, token, addressLong, sizeToWrite);
+			if (is_space_to_write(aol_allocated_memory, addressLong, sizeToWrite)) {
+				write_to_allocated_memory(aol_allocated_memory, token, addressLong, sizeToWrite);
 			} else {
 				printf("Segmentation fault (core dumped)\n");
-				printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfMallocs, nrOfFrees, nrOfFragmentations);\
-				deleteArrayOfLists(arrayOfListsFreeMemory);
-				deleteArrayOfLists(arrayOfListsAllocatedMemory);
+				print_memory_dump(aol_free_memory, aol_allocated_memory, nr_mallocs, nr_frees,
+								  nr_fragmentations);\
+                delete_aol(aol_free_memory);
+				delete_aol(aol_allocated_memory);
 				free(data);
 				break;
 			}
@@ -101,51 +102,55 @@ int main() {
 
 		} else if (strcmp(choice, "READ") == 0) {
 			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
+			DIE(!address, "malloc");
 			int sizeToRead = 0;
 
 			scanf("%s %d", address, &sizeToRead);
 
-			long addressLong = base16to10(removeHexaPrefix(address));
+			long addressLong = base16to10(remove_hexa_prefix(address));
 
-			if (isRequestedMemoryAllocated(arrayOfListsAllocatedMemory, addressLong, sizeToRead)) {
-				char *data = readFromAllocatedMemory(arrayOfListsAllocatedMemory, addressLong, sizeToRead);
+			if (is_requested_memory_allocated(aol_allocated_memory, addressLong, sizeToRead)) {
+				char *data = read_from_allocated_memory(aol_allocated_memory, addressLong, sizeToRead);
+
 				for (int i = 0; i < sizeToRead; i++) {
 					printf("%c", data[i]);
 				}
-
 				printf("\n");
 
 				free(data);
 			} else {
 				printf("Segmentation fault (core dumped)\n");
-				printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfMallocs, nrOfFrees, nrOfFragmentations);
-				deleteArrayOfLists(arrayOfListsFreeMemory);
-				deleteArrayOfLists(arrayOfListsAllocatedMemory);
+				print_memory_dump(aol_free_memory, aol_allocated_memory, nr_mallocs, nr_frees,
+								  nr_fragmentations);
+				delete_aol(aol_free_memory);
+				delete_aol(aol_allocated_memory);
 				break;
 			}
 
 		} else if (strcmp(choice, "DESTROY_HEAP") == 0) {
-			deleteArrayOfLists(arrayOfListsFreeMemory);
-			deleteArrayOfLists(arrayOfListsAllocatedMemory);
+			delete_aol(aol_free_memory);
+			delete_aol(aol_allocated_memory);
 			break;
 
 		} else if (strcmp(choice, "DUMP_MEMORY") == 0) {
-			printMemoryDump(arrayOfListsFreeMemory, arrayOfListsAllocatedMemory, nrOfMallocs, nrOfFrees, nrOfFragmentations);
+			print_memory_dump(aol_free_memory, aol_allocated_memory, nr_mallocs, nr_frees,
+							  nr_fragmentations);
 		} else if (strcmp(choice, "info") == 0) {
 			char *address = (char *) malloc(MAX_ADDRESS_SIZE * sizeof(char));
+			DIE(!address, "malloc");
 			scanf("%s", address);
 
-			long addressLong = base16to10(removeHexaPrefix(address));
+			long addressLong = base16to10(remove_hexa_prefix(address));
 
-			node_t *block = getNodeByAddress(arrayOfListsFreeMemory, addressLong);
+			node_t *block = dll_get_node_by_addr(aol_free_memory, addressLong);
 
 			printf("Block address: %lx, origin: %ld\n", block->address, block->origin);
 		} else if (strcmp(choice, "origin") == 0) {
 			int i = 0;
 			scanf("%d", &i);
 
-			for (int j = 0; j < arrayOfListsFreeMemory->number; j++) {
-				doublyLinkedList_t *list = arrayOfListsFreeMemory->lists[j];
+			for (int j = 0; j < aol_free_memory->size; j++) {
+				dll_t *list = aol_free_memory->lists[j];
 				node_t *current = list->head;
 
 				while (current != NULL) {

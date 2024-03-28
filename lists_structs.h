@@ -11,11 +11,11 @@ typedef struct node_t {
 typedef struct doublyLinkedList_t {
 	int size, data_size;
 	node_t *head;
-} doublyLinkedList_t;
+} dll_t;
 
 typedef struct arrayOfLists_t {
-	doublyLinkedList_t **lists;
-	int number, memorySize;
-} array_of_lists_t;
+	dll_t **lists;
+	int size;
+} aol_t;
 
 #endif

@@ -5,18 +5,10 @@
 #include <string.h>
 #include <errno.h>
 #include "datatype_functions.h"
-#define DIE(assertion, call_description)				\
-        do {								\
-                if (assertion) {					\
-                        fprintf(stderr, "(%s, %d): ",			\
-                                        __FILE__, __LINE__);		\
-                        perror(call_description);			\
-                        exit(errno);					\
-                }							\
-        } while (0)
 
-doublyLinkedList_t *createDoublyLinkedList(int dataSize) {
-	doublyLinkedList_t *list = (doublyLinkedList_t *) malloc(sizeof(doublyLinkedList_t));
+dll_t *dll_create(int dataSize) {
+	dll_t *list = (dll_t *) malloc(sizeof(dll_t));
+	DIE(!list, "malloc");
 
 	list->size = 0;
 	list->data_size = dataSize;
@@ -25,12 +17,12 @@ doublyLinkedList_t *createDoublyLinkedList(int dataSize) {
 	return list;
 }
 
-void createNodeNthPosition(doublyLinkedList_t *list, int position, long address) {
+void dll_create_node(dll_t *list, int position, long address) {
 	node_t *newNode = (node_t *) malloc(sizeof(node_t));
-	DIE(newNode == NULL, "malloc");
+	DIE(!newNode, "malloc");
 
 	newNode->data = malloc(list->data_size);
-	DIE(newNode->data == NULL, "malloc");
+	DIE(!newNode->data, "malloc");
 
 	newNode->address = address;
 	newNode->origin = -1;
@@ -66,7 +58,7 @@ void createNodeNthPosition(doublyLinkedList_t *list, int position, long address)
 	list->size++;
 }
 
-node_t *remove_nth_position(doublyLinkedList_t *list, int position) {
+node_t *dll_remove_by_pos(dll_t *list, int position) {
 	node_t *current = list->head;
 
 	if (position >= list->size) {
@@ -99,13 +91,13 @@ node_t *remove_nth_position(doublyLinkedList_t *list, int position) {
 	}
 }
 
-node_t *removeNodeByAddress(doublyLinkedList_t *list, long address) {
+node_t *dll_remove_by_addr(dll_t *list, long address) {
 	node_t *current = list->head;
 	int position = 0;
 
 	while (current != NULL) {
 		if (current->address == address) {
-			return remove_nth_position(list, position);
+			return dll_remove_by_pos(list, position);
 		}
 		current = current->next;
 		position++;
@@ -114,47 +106,12 @@ node_t *removeNodeByAddress(doublyLinkedList_t *list, long address) {
 	return NULL;
 }
 
-void addNewEmptyNode(doublyLinkedList_t *list, int position, long address) {
+node_t *node_create_with_origin(int data_size, long address, long origin) {
 	node_t *newNode = (node_t *) malloc(sizeof(node_t));
-	DIE(newNode == NULL, "malloc");
-
-	newNode->address = address;
-	newNode->origin = -1;
-
-	newNode->next = NULL;
-	newNode->prev = NULL;
-
-	if (position > list->size) {
-		position = list->size;
-	}
-
-	if (position == 0) {
-		newNode->next = list->head;
-		list->head = newNode;
-	} else {
-		node_t *current = list->head;
-
-		for (int i = 0; i < position - 1; i++) {
-			current = current->next;
-		}
-
-		newNode->next = current->next;
-		newNode->prev = current;
-		current->next = newNode;
-		if (newNode->next != NULL) {
-			newNode->next->prev = newNode;
-		}
-	}
-
-	list->size++;
-}
-
-node_t *createEmptyNodeWithOrigin(int data_size, long address, long origin) {
-	node_t *newNode = (node_t *) malloc(sizeof(node_t));
-	DIE(newNode == NULL, "malloc");
+	DIE(!newNode, "malloc");
 
 	newNode->data = malloc(data_size);
-	DIE(newNode->data == NULL, "malloc");
+	DIE(!newNode->data, "malloc");
 
 	newNode->address = address;
 	newNode->origin = origin;
@@ -165,7 +122,7 @@ node_t *createEmptyNodeWithOrigin(int data_size, long address, long origin) {
 	return newNode;
 }
 
-void sort_by_address(doublyLinkedList_t *list) {
+void dll_sort_by_address(dll_t *list) {
 	if (list == NULL || list->head == NULL) {
 		return;
 	}
@@ -199,11 +156,11 @@ void sort_by_address(doublyLinkedList_t *list) {
 	while (swapped);
 }
 
-void bubbleSortArrayOfListsBySize(array_of_lists_t *array_of_lists) {
+void aol_sort(aol_t *aol) {
 	int swapped;
-	doublyLinkedList_t **array = array_of_lists->lists;
-	int size = array_of_lists->number;
-	doublyLinkedList_t *temp;
+	dll_t **array = aol->lists;
+	int size = aol->size;
+	dll_t *temp;
 
 	do {
 		swapped = 0;
@@ -220,8 +177,8 @@ void bubbleSortArrayOfListsBySize(array_of_lists_t *array_of_lists) {
 	while (swapped);
 }
 
-doublyLinkedList_t *getListWithSize(array_of_lists_t *arrayOfLists, int size) {
-	for (int i = 0; i < arrayOfLists->number; i++) {
+dll_t *aol_get_list_by_size(aol_t *arrayOfLists, int size) {
+	for (int i = 0; i < arrayOfLists->size; i++) {
 		if (arrayOfLists->lists[i]->data_size == size) {
 			return arrayOfLists->lists[i];
 		}
@@ -230,7 +187,7 @@ doublyLinkedList_t *getListWithSize(array_of_lists_t *arrayOfLists, int size) {
 	return NULL;
 }
 
-void addNodeToNthPosition(doublyLinkedList_t *list, node_t *node, int position) {
+void dll_add_by_pos(dll_t *list, node_t *node, int position) {
 	if (position > list->size) {
 		position = list->size;
 	}
@@ -262,17 +219,17 @@ void addNodeToNthPosition(doublyLinkedList_t *list, node_t *node, int position) 
 
 }
 
-node_t *removeNAddress(array_of_lists_t *arrayOfLists, long address, int *nodeSize) {
+node_t *aol_remove_by_addr(aol_t *arrayOfLists, long address, int *node_size) {
 
-	for (int i = 0; i < arrayOfLists->number; i++) {
+	for (int i = 0; i < arrayOfLists->size; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
 
 		int position = 0;
 
 		while (current != NULL) {
 			if (current->address == address) {
-				*nodeSize = arrayOfLists->lists[i]->data_size;
-				return remove_nth_position(arrayOfLists->lists[i], position);
+				*node_size = arrayOfLists->lists[i]->data_size;
+				return dll_remove_by_pos(arrayOfLists->lists[i], position);
 			}
 
 			current = current->next;
@@ -283,12 +240,12 @@ node_t *removeNAddress(array_of_lists_t *arrayOfLists, long address, int *nodeSi
 	return NULL;
 }
 
-node_t *removeNeighbourNode(node_t *node, array_of_lists_t *arrayOfLists, int *sizeOfBlock, int *sizeOfNeighbour) {
+node_t *aol_remove_neighbour(node_t *node, aol_t *arrayOfLists, int *size_of_block, int *size_of_neighbour) {
 	node_t *current = NULL;
 
-	for (int i = 0; i < arrayOfLists->number; i++) {
+	for (int i = 0; i < arrayOfLists->size; i++) {
 		current = arrayOfLists->lists[i]->head;
-		sort_by_address(arrayOfLists->lists[i]);
+		dll_sort_by_address(arrayOfLists->lists[i]);
 
 		while (current) {
 			if (current->origin != node->origin) {
@@ -297,13 +254,13 @@ node_t *removeNeighbourNode(node_t *node, array_of_lists_t *arrayOfLists, int *s
 			}
 
 			if (current->address + arrayOfLists->lists[i]->data_size == node->address) {
-				*sizeOfNeighbour = arrayOfLists->lists[i]->data_size;
-				return removeNodeByAddress(arrayOfLists->lists[i], current->address);
+				*size_of_neighbour = arrayOfLists->lists[i]->data_size;
+				return dll_remove_by_addr(arrayOfLists->lists[i], current->address);
 			}
 
-			if (current->address == node->address + *sizeOfBlock) {
-				*sizeOfNeighbour = arrayOfLists->lists[i]->data_size;
-				return removeNodeByAddress(arrayOfLists->lists[i], current->address);
+			if (current->address == node->address + *size_of_block) {
+				*size_of_neighbour = arrayOfLists->lists[i]->data_size;
+				return dll_remove_by_addr(arrayOfLists->lists[i], current->address);
 			}
 
 			current = current->next;
@@ -313,26 +270,8 @@ node_t *removeNeighbourNode(node_t *node, array_of_lists_t *arrayOfLists, int *s
 	return NULL;
 }
 
-//int isNodeComplete(node_t *node, array_of_lists_t *arrayOfLists) {
-//	node_t *current;
-//
-//	for (int i = 0; i < arrayOfLists->number; i++) {
-//		current = arrayOfLists->lists[i]->head;
-//
-//		while (current != NULL) {
-//			if (current->address + arrayOfLists->lists[i]->data_size == node->address && ) {
-//				return 1;
-//			}
-//
-//			current = current->next;
-//		}
-//	}
-//
-//	return -1;
-//}
-
-int getSizeOfBlockByAddress(array_of_lists_t *arrayOfLists, long address) {
-	for (int i = 0; i < arrayOfLists->number; i++) {
+int node_get_size_of_block(aol_t *arrayOfLists, long address) {
+	for (int i = 0; i < arrayOfLists->size; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
 
 		while (current != NULL) {
@@ -347,8 +286,8 @@ int getSizeOfBlockByAddress(array_of_lists_t *arrayOfLists, long address) {
 	return 0;
 }
 
-node_t *getNodeByAddress(array_of_lists_t *arrayOfLists, long address) {
-	for (int i = 0; i < arrayOfLists->number; i++) {
+node_t *dll_get_node_by_addr(aol_t *arrayOfLists, long address) {
+	for (int i = 0; i < arrayOfLists->size; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
 
 		while (current != NULL) {
@@ -363,8 +302,8 @@ node_t *getNodeByAddress(array_of_lists_t *arrayOfLists, long address) {
 	return NULL;
 }
 
-int getSizeOfPartialBlockByAddress(array_of_lists_t *arrayOfLists, long address) {
-	for (int i = 0; i < arrayOfLists->number; i++) {
+int node_get_size_of_partial_block(aol_t *arrayOfLists, long address) {
+	for (int i = 0; i < arrayOfLists->size; i++) {
 		node_t *current = arrayOfLists->lists[i]->head;
 
 		while (current != NULL) {
@@ -377,20 +316,4 @@ int getSizeOfPartialBlockByAddress(array_of_lists_t *arrayOfLists, long address)
 	}
 
 	return 0;
-}
-
-char *getPartialBlockDataByAddress(array_of_lists_t *arrayOfLists, long address) {
-	for (int i = 0; i < arrayOfLists->number; i++) {
-		node_t *current = arrayOfLists->lists[i]->head;
-
-		while (current != NULL) {
-			if (current->address <= address && address < current->address + arrayOfLists->lists[i]->data_size) {
-				return (char *)current->data + (address - current->address);
-			}
-
-			current = current->next;
-		}
-	}
-
-	return NULL;
 }
