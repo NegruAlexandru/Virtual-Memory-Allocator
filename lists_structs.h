@@ -1,4 +1,7 @@
+//Negru Alexandru 314CAb 2023-2024
+
 #pragma once
+
 #ifndef LISTS_STRUCTS_H
 #define LISTS_STRUCTS_H
 

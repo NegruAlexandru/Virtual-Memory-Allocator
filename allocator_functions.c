@@ -1,10 +1,11 @@
-#include "allocator_functions.h"
+//Negru Alexandru 314CAb 2023-2024
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include "allocator_functions.h"
 #include "lists_structs.h"
 #include "lists_functions.h"
-#include "datatype_functions.h"
 
 aol_t *aol_create_increasing_size(long address, int number, int memory_size) {
 	aol_t *arr = (aol_t *)malloc(sizeof(aol_t));
@@ -167,11 +168,7 @@ void move_block_to_aol(aol_t *aol, node_t *block, int size) {
 	aol->size++;
 }
 
-int malloc_function(aol_t *aol_free_memory, aol_t *aol_allocated_memory, long *fragment_group) {
-	//requested size
-	int size_needed;
-	scanf("%d", &size_needed);
-
+int malloc_function(aol_t *aol_free_memory, aol_t *aol_allocated_memory, int size_needed, long *fragment_group) {
 	//modified by getBlock functions
 	int size_of_block = 0;
 
@@ -269,10 +266,7 @@ int free_function(aol_t *aol_allocated_memory, aol_t *aol_free_memory, long addr
 				} else {
 					void *tmp = realloc(block->data, block_size);
 
-					if (!tmp) {
-						printf("Realloc fail\n");
-						return -1;
-					}
+					DIE(!tmp, "realloc");
 
 					block->data = tmp;
 					block->address = neighbour->address;

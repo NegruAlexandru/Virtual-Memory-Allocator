@@ -1,10 +1,9 @@
+//Negru Alexandru 314CAb 2023-2024
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "lists_structs.h"
 #include "lists_functions.h"
-#include <string.h>
-#include <errno.h>
-#include "datatype_functions.h"
 
 dll_t *dll_create(int dataSize) {
 	dll_t *list = (dll_t *) malloc(sizeof(dll_t));
@@ -140,12 +139,15 @@ void dll_sort_by_address(dll_t *list) {
 				// Swap nodes
 				long tempAddress = current->address;
 				void *tempData = current->data;
+				long tempOrigin = current->origin;
 
 				current->address = current->next->address;
 				current->data = current->next->data;
+				current->origin = current->next->origin;
 
 				current->next->address = tempAddress;
 				current->next->data = tempData;
+				current->next->origin = tempOrigin;
 
 				swapped = 1;
 			}
@@ -240,12 +242,15 @@ node_t *aol_remove_by_addr(aol_t *arrayOfLists, long address, int *node_size) {
 	return NULL;
 }
 
-node_t *aol_remove_neighbour(node_t *node, aol_t *arrayOfLists, int *size_of_block, int *size_of_neighbour) {
+node_t *aol_remove_neighbour(node_t *node, aol_t *aol, int *size_of_block, int *size_of_neighbour) {
 	node_t *current = NULL;
 
-	for (int i = 0; i < arrayOfLists->size; i++) {
-		current = arrayOfLists->lists[i]->head;
-		dll_sort_by_address(arrayOfLists->lists[i]);
+	for (int i = 0; i < aol->size; i++) {
+		current = aol->lists[i]->head;
+		if (aol->lists[i]->size == 0) {
+			continue;
+		}
+		dll_sort_by_address(aol->lists[i]);
 
 		while (current) {
 			if (current->origin != node->origin) {
@@ -253,14 +258,14 @@ node_t *aol_remove_neighbour(node_t *node, aol_t *arrayOfLists, int *size_of_blo
 				continue;
 			}
 
-			if (current->address + arrayOfLists->lists[i]->data_size == node->address) {
-				*size_of_neighbour = arrayOfLists->lists[i]->data_size;
-				return dll_remove_by_addr(arrayOfLists->lists[i], current->address);
+			if (current->address + aol->lists[i]->data_size == node->address) {
+				*size_of_neighbour = aol->lists[i]->data_size;
+				return dll_remove_by_addr(aol->lists[i], current->address);
 			}
 
 			if (current->address == node->address + *size_of_block) {
-				*size_of_neighbour = arrayOfLists->lists[i]->data_size;
-				return dll_remove_by_addr(arrayOfLists->lists[i], current->address);
+				*size_of_neighbour = aol->lists[i]->data_size;
+				return dll_remove_by_addr(aol->lists[i], current->address);
 			}
 
 			current = current->next;
