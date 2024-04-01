@@ -13,4 +13,6 @@ add_executable(Tema_1
         main.c
         allocator_functions.c
         allocator_functions.h
+        command_functions.c
+        command_functions.h
 )

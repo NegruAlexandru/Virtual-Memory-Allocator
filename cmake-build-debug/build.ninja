@@ -77,8 +77,8 @@ build CMakeFiles/Tema_1.dir/allocator_functions.c.obj: C_COMPILER__Tema_1_unscan
   OBJECT_DIR = CMakeFiles\Tema_1.dir
   OBJECT_FILE_DIR = CMakeFiles\Tema_1.dir
 
-build CMakeFiles/Tema_1.dir/datatype_functions.c.obj: C_COMPILER__Tema_1_unscanned_Debug C$:/Users/alexi/Documents/Facultate$ materiale/SDA/Teme/Tema_1/datatype_functions.c || cmake_object_order_depends_target_Tema_1
-  DEP_FILE = CMakeFiles\Tema_1.dir\datatype_functions.c.obj.d
+build CMakeFiles/Tema_1.dir/command_functions.c.obj: C_COMPILER__Tema_1_unscanned_Debug C$:/Users/alexi/Documents/Facultate$ materiale/SDA/Teme/Tema_1/command_functions.c || cmake_object_order_depends_target_Tema_1
+  DEP_FILE = CMakeFiles\Tema_1.dir\command_functions.c.obj.d
   FLAGS = -g -std=gnu11 -fdiagnostics-color=always
   INCLUDES = -I"C:/Users/alexi/Documents/Facultate materiale/SDA/Teme/Tema_1/."
   OBJECT_DIR = CMakeFiles\Tema_1.dir
@@ -92,7 +92,7 @@ build CMakeFiles/Tema_1.dir/datatype_functions.c.obj: C_COMPILER__Tema_1_unscann
 #############################################
 # Link the executable Tema_1.exe
 
-build Tema_1.exe: C_EXECUTABLE_LINKER__Tema_1_Debug CMakeFiles/Tema_1.dir/lists_functions.c.obj CMakeFiles/Tema_1.dir/lists_structs.c.obj CMakeFiles/Tema_1.dir/main.c.obj CMakeFiles/Tema_1.dir/allocator_functions.c.obj CMakeFiles/Tema_1.dir/datatype_functions.c.obj
+build Tema_1.exe: C_EXECUTABLE_LINKER__Tema_1_Debug CMakeFiles/Tema_1.dir/lists_functions.c.obj CMakeFiles/Tema_1.dir/lists_structs.c.obj CMakeFiles/Tema_1.dir/main.c.obj CMakeFiles/Tema_1.dir/allocator_functions.c.obj CMakeFiles/Tema_1.dir/command_functions.c.obj
   FLAGS = -g
   LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\Tema_1.dir

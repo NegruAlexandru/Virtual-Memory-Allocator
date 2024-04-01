@@ -5,99 +5,100 @@
 #include "lists_structs.h"
 #include "lists_functions.h"
 
-dll_t *dll_create(int dataSize) {
-	dll_t *list = (dll_t *) malloc(sizeof(dll_t));
+// create a new doubly linked list
+dll_t *dll_create(int data_size)
+{
+	dll_t *list = malloc(sizeof(dll_t));
 	DIE(!list, "malloc");
 
 	list->size = 0;
-	list->data_size = dataSize;
+	list->data_size = data_size;
 	list->head = NULL;
 
 	return list;
 }
 
-void dll_create_node(dll_t *list, int position, long address) {
-	node_t *newNode = (node_t *) malloc(sizeof(node_t));
-	DIE(!newNode, "malloc");
+// create a new node and add it to the list at the specified position
+void dll_create_node(dll_t *list, int position, long address)
+{
+	node_t *new_node = malloc(sizeof(node_t));
+	DIE(!new_node, "malloc");
 
-	newNode->data = malloc(list->data_size);
-	DIE(!newNode->data, "malloc");
+	new_node->data = malloc(list->data_size);
+	DIE(!new_node->data, "malloc");
 
-	newNode->address = address;
-	newNode->origin = -1;
+	new_node->address = address;
+	new_node->origin = -1;
 
-	newNode->next = NULL;
-	newNode->prev = NULL;
+	new_node->next = NULL;
+	new_node->prev = NULL;
 
-	if (position > list->size) {
+	if (position > list->size)
 		position = list->size;
-	}
 
 	if (position == 0) {
-		newNode->next = list->head;
-		if (list->head != NULL)
-			list->head->prev = newNode;
+		new_node->next = list->head;
+		if (list->head)
+			list->head->prev = new_node;
 
-		list->head = newNode;
+		list->head = new_node;
 	} else {
 		node_t *current = list->head;
 
-		for (int i = 0; i < position - 1; i++) {
+		for (int i = 0; i < position - 1; i++)
 			current = current->next;
-		}
 
-		newNode->next = current->next;
-		newNode->prev = current;
-		current->next = newNode;
-		if (newNode->next != NULL) {
-			newNode->next->prev = newNode;
-		}
+		new_node->next = current->next;
+		new_node->prev = current;
+		current->next = new_node;
+		if (new_node->next)
+			new_node->next->prev = new_node;
 	}
 
 	list->size++;
 }
 
-node_t *dll_remove_by_pos(dll_t *list, int position) {
+// remove a node from the list by position
+node_t *dll_remove_by_pos(dll_t *list, int position)
+{
 	node_t *current = list->head;
 
-	if (position >= list->size) {
+	if (position >= list->size)
 		position = list->size - 1;
-	}
 
 	if (position == 0) {
 		list->head = list->head->next;
-		if (list->head != NULL)
+
+		if (list->head)
 			list->head->prev = NULL;
 
 		list->size--;
-
-		return current;
 	} else {
-		for (int i = 0; i < position - 1; i++) {
+		for (int i = 0; i < position - 1; i++)
 			current = current->next;
-		}
 
-		node_t *toRemove = current->next;
-		current->next = toRemove->next;
+		node_t *to_remove = current->next;
+		current->next = to_remove->next;
 
-		if (toRemove->next != NULL) {
-			toRemove->next->prev = current;
-		}
+		if (to_remove->next)
+			to_remove->next->prev = current;
 
 		list->size--;
 
-		return toRemove;
+		current = to_remove;
 	}
+	return current;
 }
 
-node_t *dll_remove_by_addr(dll_t *list, long address) {
+// remove a node from the list by address
+node_t *dll_remove_by_addr(dll_t *list, long address)
+{
 	node_t *current = list->head;
 	int position = 0;
 
-	while (current != NULL) {
-		if (current->address == address) {
+	while (current) {
+		if (current->address == address)
 			return dll_remove_by_pos(list, position);
-		}
 		current = current->next;
 		position++;
 	}
@@ -105,26 +106,29 @@ node_t *dll_remove_by_addr(dll_t *list, long address) {
 	return NULL;
 }
 
-node_t *node_create_with_origin(int data_size, long address, long origin) {
-	node_t *newNode = (node_t *) malloc(sizeof(node_t));
-	DIE(!newNode, "malloc");
+// create a new node with the specified address and origin
+node_t *node_create_with_origin(int data_size, long address, long origin)
+{
+	node_t *new_node = malloc(sizeof(node_t));
+	DIE(!new_node, "malloc");
 
-	newNode->data = malloc(data_size);
-	DIE(!newNode->data, "malloc");
+	new_node->data = malloc(data_size);
+	DIE(!new_node->data, "malloc");
 
-	newNode->address = address;
-	newNode->origin = origin;
+	new_node->address = address;
+	new_node->origin = origin;
 
-	newNode->next = NULL;
-	newNode->prev = NULL;
+	new_node->next = NULL;
+	new_node->prev = NULL;
 
-	return newNode;
+	return new_node;
 }
 
-void dll_sort_by_address(dll_t *list) {
-	if (list == NULL || list->head == NULL) {
+// sort the list by address
+void dll_sort_by_address(dll_t *list)
+{
+	if (!list || !list->head)
 		return;
-	}
 
 	int swapped;
 	node_t *current;
@@ -137,28 +141,29 @@ void dll_sort_by_address(dll_t *list) {
 		while (current->next != last) {
 			if (current->address > current->next->address) {
 				// Swap nodes
-				long tempAddress = current->address;
-				void *tempData = current->data;
-				long tempOrigin = current->origin;
+				long temp_address = current->address;
+				void *temp_data = current->data;
+				long temp_origin = current->origin;
 
 				current->address = current->next->address;
 				current->data = current->next->data;
 				current->origin = current->next->origin;
 
-				current->next->address = tempAddress;
-				current->next->data = tempData;
-				current->next->origin = tempOrigin;
+				current->next->address = temp_address;
+				current->next->data = temp_data;
+				current->next->origin = temp_origin;
 
 				swapped = 1;
 			}
 			current = current->next;
 		}
 		last = current;
-	}
-	while (swapped);
+	} while (swapped);
 }
 
-void aol_sort(aol_t *aol) {
+// sort the array of lists by the size of the data
+void aol_sort(aol_t *aol)
+{
 	int swapped;
 	dll_t **array = aol->lists;
 	int size = aol->size;
@@ -175,29 +180,29 @@ void aol_sort(aol_t *aol) {
 				swapped = 1;
 			}
 		}
-	}
-	while (swapped);
+	} while (swapped);
 }
 
-dll_t *aol_get_list_by_size(aol_t *arrayOfLists, int size) {
-	for (int i = 0; i < arrayOfLists->size; i++) {
-		if (arrayOfLists->lists[i]->data_size == size) {
-			return arrayOfLists->lists[i];
-		}
+// get the list from the array of lists with the specified size
+dll_t *aol_get_list_by_size(aol_t *aol, int size)
+{
+	for (int i = 0; i < aol->size; i++) {
+		if (aol->lists[i]->data_size == size)
+			return aol->lists[i];
 	}
 
 	return NULL;
 }
 
-void dll_add_by_pos(dll_t *list, node_t *node, int position) {
-	if (position > list->size) {
+// add a node to the list at the specified position
+void dll_add_by_pos(dll_t *list, node_t *node, int position)
+{
+	if (position > list->size)
 		position = list->size;
-	}
 
 	if (position == 0) {
-		if (list->head != NULL) {
+		if (list->head)
 			list->head->prev = node;
-		}
 
 		node->next = list->head;
 		list->head = node;
@@ -205,33 +210,32 @@ void dll_add_by_pos(dll_t *list, node_t *node, int position) {
 	} else {
 		node_t *current = list->head;
 
-		for (int i = 0; i < position - 1; i++) {
+		for (int i = 0; i < position - 1; i++)
 			current = current->next;
-		}
 
 		node->next = current->next;
 		node->prev = current;
 		current->next = node;
-		if (node->next != NULL) {
+		if (node->next)
 			node->next->prev = node;
-		}
 	}
 
 	list->size++;
-
 }
 
-node_t *aol_remove_by_addr(aol_t *arrayOfLists, long address, int *node_size) {
-
-	for (int i = 0; i < arrayOfLists->size; i++) {
-		node_t *current = arrayOfLists->lists[i]->head;
+// remove a node from the array of lists by address
+node_t *aol_remove_by_addr(aol_t *aol, long address,
+						   int *node_size)
+{
+	for (int i = 0; i < aol->size; i++) {
+		node_t *current = aol->lists[i]->head;
 
 		int position = 0;
 
-		while (current != NULL) {
+		while (current) {
 			if (current->address == address) {
-				*node_size = arrayOfLists->lists[i]->data_size;
-				return dll_remove_by_pos(arrayOfLists->lists[i], position);
+				*node_size = aol->lists[i]->data_size;
+				return dll_remove_by_pos(aol->lists[i], position);
 			}
 
 			current = current->next;
@@ -242,14 +246,16 @@ node_t *aol_remove_by_addr(aol_t *arrayOfLists, long address, int *node_size) {
 	return NULL;
 }
 
-node_t *aol_remove_neighbour(node_t *node, aol_t *aol, int *size_of_block, int *size_of_neighbour) {
+// remove a neighbour of a node from the array of lists
+node_t *aol_remove_neighbour(node_t *node, aol_t *aol, int *size_of_block,
+							 int *size_of_neighbour)
+{
 	node_t *current = NULL;
 
 	for (int i = 0; i < aol->size; i++) {
 		current = aol->lists[i]->head;
-		if (aol->lists[i]->size == 0) {
+		if (aol->lists[i]->size == 0)
 			continue;
-		}
 		dll_sort_by_address(aol->lists[i]);
 
 		while (current) {
@@ -258,11 +264,13 @@ node_t *aol_remove_neighbour(node_t *node, aol_t *aol, int *size_of_block, int *
 				continue;
 			}
 
+			// return the neighbour before the node
 			if (current->address + aol->lists[i]->data_size == node->address) {
 				*size_of_neighbour = aol->lists[i]->data_size;
 				return dll_remove_by_addr(aol->lists[i], current->address);
 			}
 
+			// return the neighbour after the node
 			if (current->address == node->address + *size_of_block) {
 				*size_of_neighbour = aol->lists[i]->data_size;
 				return dll_remove_by_addr(aol->lists[i], current->address);
@@ -275,14 +283,15 @@ node_t *aol_remove_neighbour(node_t *node, aol_t *aol, int *size_of_block, int *
 	return NULL;
 }
 
-int node_get_size_of_block(aol_t *arrayOfLists, long address) {
-	for (int i = 0; i < arrayOfLists->size; i++) {
-		node_t *current = arrayOfLists->lists[i]->head;
+// get the size of the block with the specified address
+int node_get_size_of_block(aol_t *aol, long address)
+{
+	for (int i = 0; i < aol->size; i++) {
+		node_t *current = aol->lists[i]->head;
 
-		while (current != NULL) {
-			if (current->address == address) {
-				return arrayOfLists->lists[i]->data_size;
-			}
+		while (current) {
+			if (current->address == address)
+				return aol->lists[i]->data_size;
 
 			current = current->next;
 		}
@@ -291,14 +300,15 @@ int node_get_size_of_block(aol_t *arrayOfLists, long address) {
 	return 0;
 }
 
-node_t *dll_get_node_by_addr(aol_t *arrayOfLists, long address) {
-	for (int i = 0; i < arrayOfLists->size; i++) {
-		node_t *current = arrayOfLists->lists[i]->head;
+// get the node with the specified address
+node_t *dll_get_node_by_addr(aol_t *aol, long address)
+{
+	for (int i = 0; i < aol->size; i++) {
+		node_t *current = aol->lists[i]->head;
 
-		while (current != NULL) {
-			if (current->address == address) {
+		while (current) {
+			if (current->address == address)
 				return current;
-			}
 
 			current = current->next;
 		}
@@ -307,13 +317,18 @@ node_t *dll_get_node_by_addr(aol_t *arrayOfLists, long address) {
 	return NULL;
 }
 
-int node_get_size_of_partial_block(aol_t *arrayOfLists, long address) {
-	for (int i = 0; i < arrayOfLists->size; i++) {
-		node_t *current = arrayOfLists->lists[i]->head;
+// get the size of the partial block with the specified address*-*
+int node_get_size_of_partial_block(aol_t *aol, long address)
+{
+	for (int i = 0; i < aol->size; i++) {
+		node_t *current = aol->lists[i]->head;
 
-		while (current != NULL) {
-			if (current->address <= address && address < current->address + arrayOfLists->lists[i]->data_size) {
-				return arrayOfLists->lists[i]->data_size - (address - current->address);
+		while (current) {
+			if (current->address <= address &&
+				address < current->address +
+						  aol->lists[i]->data_size) {
+				return aol->lists[i]->data_size -
+					   (address - current->address);
 			}
 
 			current = current->next;
