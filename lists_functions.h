@@ -20,6 +20,7 @@ do {								\
 } while (0)
 
 dll_t *dll_create(int data_size);
+dll_t *dll_delete(dll_t *list);
 void dll_create_node(dll_t *list, int position, long address);
 void dll_add_by_pos(dll_t *list, node_t *node, int position);
 node_t *dll_remove_by_pos(dll_t *list, int position);

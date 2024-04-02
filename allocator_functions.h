@@ -19,6 +19,7 @@ int malloc_function(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 int free_function(aol_t *aol_allocated_memory, aol_t *aol_free_memory,
 				  long address, int free_mode);
 void delete_aol(aol_t *aol);
+void dll_delete_from_aol(aol_t *aol, dll_t *list);
 int is_space_to_write(aol_t *aol, long address, int size_to_write);
 void write_to_allocated_memory(aol_t *aol, char *data, long address,
 							   int size_to_write);

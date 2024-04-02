@@ -20,11 +20,11 @@ void command_init(char *command, aol_t **aol_free_memory,
 				   &memory_size, free_mode);
 	DIE(count != 4, "Invalid command");
 
-	// create the free memory data structure
+	// create the free memory data_info structure
 	*aol_free_memory = aol_create_increasing_size(address,
 												  nr_of_lists, memory_size);
 
-	// create the allocated memory data structure, initialized with 0 lists
+	// create the allocated memory data_info structure, initialized with 0 lists
 	*aol_allocated_memory = aol_create_increasing_size(address,
 													   INIT_NR_OF_LISTS_ALLOC,
 													   memory_size);
@@ -99,7 +99,7 @@ void command_write(char *command, aol_t *aol_free_memory,
 	// check if the memory is allocated
 	if (is_space_to_write(aol_allocated_memory, address,
 						  memory_size)) {
-		// write the data
+		// write the data_info
 		write_to_allocated_memory(aol_allocated_memory,
 								  token, address, memory_size);
 	} else {
@@ -128,11 +128,11 @@ void command_read(char *command, aol_t *aol_free_memory,
 	// check if the memory is allocated
 	if (is_requested_memory_allocated(aol_allocated_memory, address,
 									  memory_size)) {
-		// read the data
+		// read the data_info
 		char *data = read_from_allocated_memory(aol_allocated_memory,
 													  address, memory_size);
 
-		// print the data
+		// print the data_info
 		for (int i = 0; i < memory_size; i++)
 			printf("%c", data[i]);
 		printf("\n");

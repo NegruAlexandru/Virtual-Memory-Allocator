@@ -51,14 +51,12 @@ void print_memory_dump(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 							 aol_free_memory->lists[i]->data_size;
 		free_blocks += aol_free_memory->lists[i]->size;
 	}
-
 	int allocated_blocks = 0;
 	for (int i = 0; i < aol_allocated_memory->size; i++) {
 		total_allocated_memory += aol_allocated_memory->lists[i]->size *
 								  aol_allocated_memory->lists[i]->data_size;
 		allocated_blocks += aol_allocated_memory->lists[i]->size;
 	}
-
 	// print the memory dump
 	printf("+++++DUMP+++++\n");
 	printf("Total memory: %d bytes\n",
@@ -74,6 +72,7 @@ void print_memory_dump(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 	for (int i = 0; i < aol_free_memory->size; i++) {
 		if (aol_free_memory->lists[i]->size == 0)
 			continue;
+
 		int data_size = aol_free_memory->lists[i]->data_size;
 		int size = aol_free_memory->lists[i]->size;
 
@@ -82,7 +81,8 @@ void print_memory_dump(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 		node_t *current = aol_free_memory->lists[i]->head;
 
 		for (int j = 0; j < size; j++) {
-			printf(" 0x%lx", current->address);
+			info_t *info = (info_t *)current->data;
+			printf(" 0x%lx", info->address);
 			current = current->next;
 		}
 		printf("\n");
@@ -101,13 +101,13 @@ void print_memory_dump(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 			node_t *current = aol_allocated_memory->lists[j]->head;
 
 			for (int k = 0; k < aol_allocated_memory->lists[j]->size; k++) {
-				if (current->address < min_address &&
-					current->address > address)
-					min_address = current->address;
+				info_t *info = (info_t *)current->data;
+				if (info->address < min_address &&
+					info->address > address)
+					min_address = info->address;
 				current = current->next;
 			}
 		}
-
 		address = min_address;
 		printf(" (0x%lx - %d)", address,
 			   node_get_size_of_block(aol_allocated_memory, address));
@@ -191,26 +191,27 @@ int malloc_function(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 					int size_needed, long *fragment_group)
 {
 	int size_of_block = 0;
-
 	//searching for free block
 	node_t *block = node_get_ideal_block(aol_free_memory, size_needed,
 										 &size_of_block);
-
 	if (!block) {
 		block = node_get_available_block(aol_free_memory, size_needed,
 										 &size_of_block);
-
 		if (!block) {
 			printf("Out of memory\n");
 			return -1;
 		}
 	}
 
+	dll_t *list = aol_get_list_by_size(aol_free_memory,
+									   size_of_block);
+	if (list->size == 0)
+		dll_delete_from_aol(aol_free_memory, list);
+
 	//if block is exactly the size needed
 	if (size_of_block == size_needed) {
 		// block being moved to allocated memory
 		move_block_to_aol(aol_allocated_memory, block, size_of_block);
-
 		dll_sort_by_address(aol_get_list_by_size(aol_allocated_memory,
 												 size_of_block));
 		aol_sort(aol_allocated_memory);
@@ -222,24 +223,24 @@ int malloc_function(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 	if (size_of_block > size_needed) {
 		node_t *requested_block;
 		node_t *remaining_block;
+		info_t *info_block = (info_t *)block->data;
 
 		int size_of_remaining_block = size_of_block - size_needed;
-		long addr_of_remaining_block = block->address + size_needed;
+		long addr_of_remaining_block = info_block->address + size_needed;
 
-		if (block->origin >= 0) {
+		if (info_block->origin >= 0) {
 			// if the block is a fragment, it will be moved to the same group
 			requested_block = node_create_with_origin(size_needed,
-													  block->address,
-													  block->origin);
+													  info_block->address,
+													  info_block->origin);
 			remaining_block = node_create_with_origin(size_of_remaining_block,
 													  addr_of_remaining_block,
-													  block->origin);
+													  info_block->origin);
 		} else {
 			// if the block is not a fragment, it will be moved to a new group
 			requested_block = node_create_with_origin(size_needed,
-													  block->address,
+													  info_block->address,
 													  *fragment_group);
-
 			remaining_block = node_create_with_origin(size_of_remaining_block,
 													  addr_of_remaining_block,
 													  *fragment_group);
@@ -249,7 +250,6 @@ int malloc_function(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 		// move the blocks to the appropriate lists
 		move_block_to_aol(aol_allocated_memory, requested_block,
 						  size_needed);
-
 		dll_sort_by_address(aol_get_list_by_size(aol_allocated_memory,
 												 size_needed));
 		aol_sort(aol_allocated_memory);
@@ -260,13 +260,62 @@ int malloc_function(aol_t *aol_free_memory, aol_t *aol_allocated_memory,
 												 size_of_block - size_needed));
 		aol_sort(aol_free_memory);
 
+		free(info_block->data_info);
 		free(block->data);
 		free(block);
-
 		return 1;
 	}
 
 	return -1;
+}
+
+void free_bonus_function(node_t *block, aol_t *aol_free_memory,
+						 aol_t *aol_allocated_memory, int block_size)
+{
+	info_t *info_block = (info_t *)block->data;
+
+	// if the block is a fragment,
+	// it will try to merge with the neighbours
+	int neighbour_size = 0;
+	node_t *neighbour = aol_remove_neighbour(block, aol_free_memory,
+											 &block_size,
+											 &neighbour_size);
+
+	while (neighbour) {
+		block_size += neighbour_size;
+
+		info_t *info_neighbour = (info_t *)neighbour->data;
+
+		if (info_block->address < info_neighbour->address) {
+			// if the neighbour is before the block
+			void *tmp = realloc(info_block->data_info, block_size);
+			DIE(!tmp, "realloc");
+
+			info_block->data_info = tmp;
+
+			free(info_neighbour->data_info);
+			free(neighbour->data);
+			free(neighbour);
+		} else {
+			// if the neighbour is after the block
+			void *tmp = realloc(info_block->data_info, block_size);
+			DIE(!tmp, "realloc");
+
+			info_block->data_info = tmp;
+			info_block->address = info_neighbour->address;
+
+			free(info_neighbour->data_info);
+			free(neighbour->data);
+			free(neighbour);
+		}
+
+		neighbour = aol_remove_neighbour(block, aol_free_memory,
+										 &block_size, &neighbour_size);
+	}
+	// move the block to the free memory
+	move_block_to_aol(aol_free_memory, block, block_size);
+	dll_sort_by_address(aol_get_list_by_size(aol_free_memory,
+											 block_size));
 }
 
 // free a block
@@ -278,11 +327,16 @@ int free_function(aol_t *aol_allocated_memory, aol_t *aol_free_memory,
 	// search for the block to be freed
 	node_t *block = aol_remove_by_addr(aol_allocated_memory, address,
 									   &block_size);
-
 	if (!block) {
 		printf("Invalid free\n");
 		return -1;
 	}
+
+	info_t *info_block = (info_t *)block->data;
+
+	dll_t *list = aol_get_list_by_size(aol_allocated_memory, block_size);
+	if (list->size == 0)
+		dll_delete_from_aol(aol_allocated_memory, list);
 
 	if (free_mode == 0) {
 		// move the block to the free memory
@@ -292,53 +346,11 @@ int free_function(aol_t *aol_allocated_memory, aol_t *aol_free_memory,
 		return 0;
 
 	} else if (free_mode == 1) {
-		if (block->origin >= 0) {
-			// if the block is a fragment,
-			// it will try to merge with the neighbours
-			int neighbour_size = 0;
-
-			node_t *neighbour = aol_remove_neighbour(block, aol_free_memory,
-													 &block_size,
-													 &neighbour_size);
-
-			while (neighbour) {
-				block_size += neighbour_size;
-
-				if (block->address < neighbour->address) {
-					// if the neighbour is before the block
-					void *tmp = realloc(block->data, block_size);
-
-					DIE(!tmp, "realloc");
-
-					block->data = tmp;
-
-					free(neighbour->data);
-					free(neighbour);
-				} else {
-					// if the neighbour is after the block
-					void *tmp = realloc(block->data, block_size);
-
-					DIE(!tmp, "realloc");
-
-					block->data = tmp;
-					block->address = neighbour->address;
-
-					free(neighbour->data);
-					free(neighbour);
-				}
-
-				neighbour = aol_remove_neighbour(block, aol_free_memory,
-												 &block_size, &neighbour_size);
-			}
-
-			// move the block to the free memory
-			move_block_to_aol(aol_free_memory, block, block_size);
-			dll_sort_by_address(aol_get_list_by_size(aol_free_memory,
-													 block_size));
-
+		if (info_block->origin >= 0) {
+			free_bonus_function(block, aol_free_memory,
+								aol_allocated_memory, block_size);
 			return 0;
 		}
-
 		// if the block is not a fragment,
 		// it will be moved directly to the free memory
 		move_block_to_aol(aol_free_memory, block, block_size);
@@ -351,6 +363,26 @@ int free_function(aol_t *aol_allocated_memory, aol_t *aol_free_memory,
 	return -1;
 }
 
+// delete a list from the array of lists
+void dll_delete_from_aol(aol_t *aol, dll_t *list)
+{
+	for (int i = 0; i < aol->size; i++) {
+		if (aol->lists[i] == list) {
+			free(list);
+			for (int j = i; j < aol->size - 1; j++)
+				aol->lists[j] = aol->lists[j + 1];
+			aol->size--;
+			dll_t **tmp = malloc((aol->size) * sizeof(dll_t *));
+			DIE(!tmp, "malloc");
+			for (int j = 0; j < aol->size; j++)
+				tmp[j] = aol->lists[j];
+			free(aol->lists);
+			aol->lists = tmp;
+			break;
+		}
+	}
+}
+
 // delete the array of lists
 void delete_aol(aol_t *aol)
 {
@@ -358,6 +390,8 @@ void delete_aol(aol_t *aol)
 		node_t *current = aol->lists[i]->head;
 
 		while (current) {
+			info_t *info = (info_t *)current->data;
+			free(info->data_info);
 			free(current->data);
 			node_t *tmp = current;
 			current = current->next;
@@ -400,13 +434,15 @@ void write_to_allocated_memory(aol_t *aol, char *data, long address,
 
 		node_t *block = dll_get_node_by_addr(aol, address);
 
-		// if the block is big enough, copy the data
+		info_t *info = (info_t *)block->data;
+
+		// if the block is big enough, copy the data_info
 		if (size >= size_to_write) {
-			memcpy(block->data, data, size_to_write);
+			memcpy(info->data_info, data, size_to_write);
 			return;
 		}
 
-		memcpy(block->data, data, size);
+		memcpy(info->data_info, data, size);
 
 		data += size;
 		address += size;
@@ -446,13 +482,15 @@ char *read_from_allocated_memory(aol_t *aol, long address, int size_to_read)
 
 		node_t *block = dll_get_node_by_addr(aol, address);
 
-		// if the block is big enough, copy the data
+		info_t *info = (info_t *)block->data;
+
+		// if the block is big enough, copy the data_info
 		if (size >= size_to_read) {
-			memcpy(data, block->data, size_to_read);
+			memcpy(data, info->data_info, size_to_read);
 			return data_start;
 		}
 
-		memcpy(data, block->data, size);
+		memcpy(data, info->data_info, size);
 		data += size;
 		address += size;
 		size_to_read -= size;
